@@ -1,0 +1,48 @@
+;; expect: accept
+;; out: 2 49 10
+;; spec/lir.md 4.6: every include met while a module macro is armed is collected before its file's forms, so the macro knows each file
+;; included, one with no forms too (module-include-empty.lir, comments only, which leaves nothing else). names counts the collected
+;; (INCLUDE "FILE") forms and the bytes of their FILEs, splices every form back (an include of a file already read is nothing), and
+;; defines (GLOBAL include-info) of the two: 2 includes, 24 + 25 bytes; nested (module-include-nested.lir) arrived after its include.
+(DEFINE-MACRO lit64 (v)
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l v)
+      (RET l))))
+(DEFINE-MACRO names (forms ...)
+  (BLOCK entry
+    (LET ((n (CALL (GLOBAL lir.sexp.count) forms)) (out (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) out (CALL (GLOBAL lir.sexp.symbol) (STRING "BEGIN")))
+      (BR loop)))
+  (BLOCK loop
+    (LET ((i (PHI I64 (entry (I64 0)) (next i2))) (k (PHI I64 (entry (I64 0)) (next k2))) (len (PHI I64 (entry (I64 0)) (next len2))))
+      (BR (ICMP ULT i n) body done)))
+  (BLOCK body
+    (LET ((f (CALL (GLOBAL lir.sexp.nth) forms i)))
+      (CALL (GLOBAL lir.sexp.push) out f)
+      (BR (CALL (GLOBAL lir.sexp.is) (CALL (GLOBAL lir.sexp.nth) f (I64 0)) (STRING "INCLUDE")) inc plain)))
+  (BLOCK inc
+    (LET ((k1 (ADD k (I64 1))) (len1 (ADD len (CALL (GLOBAL lir.sexp.len) (CALL (GLOBAL lir.sexp.nth) f (I64 1))))))
+      (BR next)))
+  (BLOCK plain (BR next))
+  (BLOCK next
+    (LET ((k2 (PHI I64 (inc k1) (plain k))) (len2 (PHI I64 (inc len1) (plain len))) (i2 (ADD i (I64 1))))
+      (BR loop)))
+  (BLOCK done
+    (LET ((g (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.sexp.symbol) (STRING "GLOBAL")))
+      (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.sexp.symbol) (STRING "include-info")))
+      (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.macro.lit64) (CALL (GLOBAL lir.sexp.integer) (ADD (MUL k (I64 1000)) len))))
+      (CALL (GLOBAL lir.sexp.push) out g)
+      (RET out))))
+(MODULE-MACRO names)
+(DECLARE printf I32 (PTR ...))
+(INCLUDE "module-include-empty.lir")
+(INCLUDE "module-include-nested.lir")
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (LET ((v (LOAD I64 (GLOBAL include-info))))
+      (CALL (GLOBAL printf) (STRING "%lld %lld %lld\n") (SDIV v (I64 1000)) (SREM v (I64 1000)) (CALL (GLOBAL nested)))
+      (RET (I32 0)))))

@@ -1,0 +1,4 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6: a file of comments only, no forms: module-include-names.lir includes it while its module macro is armed, and the
+;; include itself is all the macro sees of it.

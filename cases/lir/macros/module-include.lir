@@ -1,10 +1,11 @@
 ;; expect: accept
-;; out: 5 16861 1004050613 111
-;; spec/lir.md 4.6: an include met while a module macro is armed reads the file under the readtable and contributes its forms to the
-;; collection, in its place, each naming the file it was read from; the include itself is not collected, a nested include acts the same
-;; way, and a second include of the file (another spelling of the path) is nothing. census (module-include-lib.lir) is given, in order:
-;; the declare (this file, file digit 1, line 10), part-a (module-include-part.lir, digit 6, line 4), nested (module-include-nested.lir,
-;; digit 8, line 5), part-b (digit 6, line 6) and main (digit 1, line 13).
+;; out: 8 11668611 1112040505061314 111
+;; spec/lir.md 4.6: an include met while a module macro is armed is collected, and then reads the file under the readtable and
+;; contributes its forms to the collection after it, each naming the file it was read from; a nested include acts the same way, and a
+;; second include of the file (another spelling of the path) is collected and reads nothing. census (module-include-lib.lir) is given,
+;; in order: the declare (this file, file digit 1, line 11), the include (1, line 12), part-a (module-include-part.lir, digit 6, line
+;; 4), its include (6, line 5), nested (module-include-nested.lir, digit 8, line 5), part-b (6, line 6), the second include (1, line
+;; 13) and main (1, line 14).
 (REQUIRE-MACROS "module-include-lib.lir")
 (MODULE-MACRO census)
 (DECLARE printf I32 (PTR ...))

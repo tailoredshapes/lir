@@ -530,10 +530,13 @@ program nor exported, and a library may hold it beside `define-macro`.
 **module-macro.** `(MODULE-MACRO NAME)`, Racket's `#%module-begin` as one direction: `NAME` is a macro defined before it with a `...`
 parameter (`module-macro: NAME is not a macro`, `module-macro: NAME takes no ... parameter`); from the form after the direction to the end
 of the module's text the reader collects the top-level forms, read under the readtable and not expanded, directions included (an `import`,
-`define-macro` or `module-macro` written there is data the macro sees), except `include`, the one direction that acts in the collected
-region: the file is read there under the readtable and its forms are collected in the include's place, each object naming the file it
-was read from, a nested include acting the same way, under include's once and cycle rules (below; `module-include.lir`,
-`module-include-rearm.lir`, `reject-module-include-cycle.lir`); at the end of the text `NAME` is applied to them as its `...`
+`define-macro` or `module-macro` written there is data the macro sees), `include` too, the one direction that also acts in the
+collected region: it is collected, and then the file is read there under the readtable and its forms are collected after it, each object
+naming the file it was read from, a nested include acting the same way, under include's once and cycle rules (below; `module-include.lir`,
+`module-include-rearm.lir`, `reject-module-include-cycle.lir`), so the macro knows every file included, one with no forms too
+(`module-include-names.lir`: an `(INCLUDE "FILE")` is the trace of a file of comments only; the forms of an included file name it
+resolved, `FILE` beside the including file, and the include names it as written; the form written is the trace, as a C preprocessor's
+line marker is, and no word or function is added for it), and an include the macro splices back reads nothing, its file read already; at the end of the text `NAME` is applied to them as its `...`
 argument and its result is one top-level form, expanded as any is, a `begin` splice usually, whose spliced directions then take effect in
 order (`cases/lir/macros/module-count.lir`, `module-splice.lir`); a result that is no top-level form is the parser's error at the direction
 (`reject-module-result.lir`). A library may hold the direction, so a `require-macros` arms it and the text after is the macro's
