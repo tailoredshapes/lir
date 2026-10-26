@@ -1,0 +1,20 @@
+;; expect: reject
+;; own: verify
+;; error: 19:31: error: ownership rule 2: d used after it was consumed
+;; spec/lir.md 6.14.5 rule 2: within one instruction the consuming positions take effect before the others, so d passed at the owned
+;; position 2 and the guaranteed position 1 of one call is used after it was consumed, though position 1 comes first in the text.
+(IMPORT "import-base.lir")
+(DEFINE (mk (PTR (ADDRSPACE 1))) ()
+  (BLOCK entry
+    (LET ((x (ALLOC-OBJECT (STRUCT box) (I32 7))))
+      (STORE INIT ((PTR (ADDRSPACE 1)) NULL) (GETELEMENTPTR (STRUCT box) x (I32 0) (I32 2)))
+      (RET x))))
+(DEFINE (peek-eat VOID) (((PTR (ADDRSPACE 1)) x) ((PTR (ADDRSPACE 1)) OWNED y))
+  (BLOCK entry
+    (DESTROY-VALUE y)
+    (RET)))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (LET ((d (CALL (GLOBAL mk))))
+      (CALL (GLOBAL peek-eat) d d)
+      (RET (I32 0)))))
