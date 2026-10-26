@@ -1,0 +1,24 @@
+;; expect: accept
+;; out: 120122094003
+;; spec/lir.md 4.8: (lir.read.peek-at s n) is the byte n bytes from the cursor (n < 0: behind it), -1 outside the text, and consumes
+;; nothing. The reader macro of ^ is given the stream after ^: it reads the bytes 0 and 2 ahead (x 120, z 122), 1 behind (^ itself, 94)
+;; and a million ahead (-1, past the end), then reads the next form, the symbol xyz whole (3 bytes: nothing was consumed), and makes
+;; (I64 N) of the five, three digits each (the fourth is -1 + 1).
+(DECLARE printf I32 (PTR ...))
+(DEFINE-READER-MACRO "^" (s)
+  (BLOCK entry
+    (LET ((a (CALL (GLOBAL lir.read.peek-at) s (I64 0)))
+          (c (CALL (GLOBAL lir.read.peek-at) s (I64 2)))
+          (b (CALL (GLOBAL lir.read.peek-at) s (I64 -1)))
+          (far (CALL (GLOBAL lir.read.peek-at) s (I64 1000000)))
+          (x (CALL (GLOBAL lir.read.form) s))
+          (n (ADD (MUL (ADD (MUL (ADD (MUL a (I64 1000)) c) (I64 1000)) b) (I64 1000))
+                  (ADD (MUL (ADD far (I64 1)) (I64 100)) (CALL (GLOBAL lir.sexp.len) x))))
+          (l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.integer) n))
+      (RET l))))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%lld\n") ^xyz)
+    (RET (I32 0))))

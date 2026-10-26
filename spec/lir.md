@@ -737,6 +737,7 @@ every macro's body:
 | Function | Does |
 |---|---|
 | `(lir.read.peek s) : i64` | the byte at the stream, -1 at the end of the text; nothing is consumed |
+| `(lir.read.peek-at s n) : i64` | the byte `n` bytes from the stream (`n < 0`: behind it), -1 outside the text; nothing is consumed: a macro that looks further than the next byte asks for it, and no macro reads the struct's words (`cases/lir/readers/peek-at.lir`) |
 | `(lir.read.next s) : i64` | that byte, consumed: a newline starts the next line at column 1, a UTF-8 continuation byte leaves the column, any other byte advances it |
 | `(lir.read.position s) : i64` | the position of the stream, `line << 32 \| column`, what `lir.read.fail` takes |
 | `(lir.read.skip s) : i64` | whitespace, commas and comments (§1 and the classes, the reader's own definition) consumed; the byte after them, -1 at the end |
