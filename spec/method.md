@@ -1,0 +1,107 @@
+# Method
+
+liar was abandoned because its documentation, commit messages and test
+suite claimed more than the code did. fibber is built so that no claim
+rests on anyone's word, including the author's.
+
+## Rules
+
+1. **The spec has executable acceptance evidence.** Decided prose rules are
+   pinned by case verdicts, behaviour specs and architectural checks. Prose and
+   code disagreements are bugs to report and resolve explicitly. The original
+   independent Rust interpreter is retired at tag `seed-1`; it is not required
+   as an oracle by the current method (rule 6). `fibc repl` (written in fibber,
+   docs/design/dev-loop.md §9) is a development tool over the compiler's own engine,
+   not an independent implementation, so it supplies no oracle either.
+
+2. **Compiled cases audit memory.** The runtime trace/audit checks allocations,
+   retains, releases and accesses. An accepted case must satisfy its stated audit
+   and allocation bound. The interpreter/heap-audit port still owed is additional
+   development evidence; contract stubs do not supply that evidence today.
+
+3. **Cases come before rules.** Each case in `cases/` states its
+   expected verdict in its header before the rules that decide it are
+   final:
+   - `accept`: must type-check, run, produce the stated result, and
+     finish with a clean memory audit. A header may add `allocs: <= N`:
+     the run allocates at most `N` heap objects, the `A` lines of its
+     free trace (compiler.md §4). `fibref cases` (the Rust, retired: docs/rust-legacy.md) counted them in the
+     interpreter's trace and `fibc cases` in the `FIB_TRACE=1` trace of
+     the compiled run; the two traces are the same lines, so the counts
+     are the same, except in a threaded run, where the compiled program
+     may allocate more, and in a program that makes an `Option` of a
+     scalar, where stage 2 holds it as a value and the compiled count is
+     lower (compiler.md §8 item 13; the case then carries `;; stage: 2`). More than `N` is a failure, never pending, and
+     so is an evaluator that gives no count: a bound nobody checked
+     would pass whatever the program did. A `<=` fails only when the
+     count goes up, so a bound is worth having when `N` is the count,
+     and a case that claims that has a test that lowers `N` by one and
+     requires the failure.
+     A header may also say `audit: leak-cycle`, a run that leaked and
+     erred nowhere, or `audit: abandoned`, the objects a spawned task's
+     frames owned when it trapped (a task's trap ends the task and
+     abandons them, docs/design/exceptions.md 4.1): both hold when
+     something leaked and nothing erred, and `abandoned` must say how
+     many with `leaks: N`, which then holds only when exactly `N` leaked
+     (so a runtime that frees too much or too little under a trap
+     fails). `clean` takes no `leaks`.
+   - `reject`: must fail to compile, with an error containing the
+     stated text.
+   - `trap`: must type-check and pass the ownership checker, then
+     fail at run time with a trap whose message contains the stated
+     text. A trap aborts the program (types §2.11), so the objects
+     live then are not leaks; the audit still fails the run on any
+     use-after-free, double free or negative count before the trap,
+     and on a live object that refers to a freed one at it.
+   A rule change that flips a verdict needs the case's header changed
+   in the same commit, with the reason.
+
+   Two more header keys say what a case is about and do not change its
+   verdict:
+   - `covers: NAME ..` (any verdict): the names of the standard
+     library's function table (`spec/stdlib.md` §4) that the case calls.
+     The test `stdlib_table` fails a row of a delivered tranche that no
+     case covers, a name that is no row, and a name that the case's code
+     never calls: a `covers:` line alone cannot fail.
+   - `open: ITEM ..` (`accept` only): the items (`spec/stdlib.md` §7) whose
+     absence is why the case fails today. The case runs. A failure that is
+     the program's own (the checker refuses it, it traps, it answers
+     differently, the two tools agreeing and the audit clean) is listed as
+     OPEN with its items and counted apart: it is not a pass, and it does not
+     fail the suite. A pass is a failure, "the item landed: remove `open`",
+     so the label cannot outlive its reason; a failure of the tools
+     themselves (they disagree, the audit finds an error) stays a failure.
+
+4. **Adversarial cases are written by someone trying to break it.** A
+   separate agent, given only the spec, writes programs intended to be
+   accepted yet corrupt memory, or be rejected yet be safe. Each one it
+   finds becomes a case.
+
+5. **Generated programs (port planned).** Random well-typed programs
+   accepted by the checker must pass the memory audit; failures are minimised
+   and added as cases. The Rust generator is retired and `compiler/gen/`
+   contains port contracts, so its skeleton check does not supply random
+   program coverage today. Restoring that coverage remains scheduled work.
+
+6. **The compiler is checked by executable evidence.** (Amended
+   2026-10-06, the owner's decision of 2026-10-04: the comparison with a
+   reference interpreter is dropped; the Rust oracles are retired and live
+   in git, tag `seed-1`, docs/rust-legacy.md.) Every case runs compiled
+   through lIR to native code with its verdict and memory audit checked;
+   the compiler compiles itself to a fixed point; the golden outputs under
+   `compiler/tests/golden/` pin each pass; the behaviour specs
+   (`fibc test`) and the architecture decision records (`make adr`,
+   docs/adr/) pin the rest. A feature is done when `scripts/gate.sh --full`
+   passes, not before. An interpreter, when it returns (docs/design/fibref-port.md),
+   is a development tool and an additional audit, not the judge.
+
+7. **lIR verifies its input.** lIR type-checks whole modules and runs
+   the LLVM verifier by default. Invalid lIR is an error with a message,
+   never a backend crash or silently wrong code.
+
+## Decision records
+
+Decisions are recorded in the spec chapter they affect, each marked
+**Decided** (with the owner's sign-off) or **Proposed**. A proposed
+decision can be prototyped with executable cases to test it, but nothing
+downstream depends on it until it is decided.
