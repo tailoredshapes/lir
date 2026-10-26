@@ -38,6 +38,8 @@ unexport FIB_LIB
 unexport FIB_PATH
 export FIB_LIR_SPELLING := old
 export TMPDIR := $(ABS_BUILD)/tmp
+# lair's cache of compiled lIR objects (liro) is the build's own, so a clean build is cold and reuses no object made outside it.
+export FIB_LIRO_CACHE ?= $(ABS_BUILD)/liro-cache
 $(shell mkdir -p $(TMPDIR))
 unexport LD_LIBRARY_PATH
 
