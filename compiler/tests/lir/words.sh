@@ -16,7 +16,7 @@ export LD_LIBRARY_PATH=$lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 cd "$root" || exit 2
 if [ -z "$L" ]; then
   [ -x "$F" ] || { echo "words: give a stage 2 fibc (FIBC) or a lairf (LAIRF)" >&2; exit 2; }
-  (ulimit -v 16000000; timeout 900 "$F" build compiler/lairf.fib -I compiler -I lib -L "$lib" -l LLVM-21 -o "$out/lairf") > "$out/lairf.log" 2>&1 \
+  (ulimit -v 16000000; timeout 900 "$F" build compiler/lairf.fib -I compiler -L "$lib" -l LLVM-21 -o "$out/lairf") > "$out/lairf.log" 2>&1 \
     || { tail -5 "$out/lairf.log"; echo "words: lairf did not build" >&2; exit 2; }
   L=$out/lairf
 fi

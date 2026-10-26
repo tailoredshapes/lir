@@ -1,0 +1,20 @@
+;; compiler/tests/support/types/check.fib: a copy of fibber's compiler/types/check.fib (fibber ce3d8314), the helper that the unit
+;; programs k1-core.fib, k2/k2-rules.fib and l1-unit-lower.fib use: `check` prints `ok NAME` or `FAIL NAME` for a condition and counts
+;; the failures in a Cell, which the program ends with (`finish`: 0 when every check held, 1 otherwise). It is test support only, on the
+;; module path of those programs alone (`-I compiler/tests/support`), never of a tool; the module keeps its fibber name so the tests are
+;; unchanged.
+(ns types.check)
+
+(defstruct Checks (failed: (Cell i64)))
+
+(defun checks-new () -> Checks (Checks (cell 0)))
+
+(defun check (cs: Checks name: str ok: bool) -> unit
+  (if ok
+      (println (str-join ["ok " name]))
+      (do (set! (. cs failed) (+ @(. cs failed) 1))
+          (println (str-join ["FAIL " name])))))
+
+;; The exit status: 0 if no check failed.
+(defun finish (cs: Checks) -> i64
+  (if (= @(. cs failed) 0) 0 1))

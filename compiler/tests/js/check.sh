@@ -13,8 +13,8 @@ faults=0; [ "${1:-}" = --faults ] && { faults=1; shift; }
 out=${1:?usage: check.sh [--faults] OUTDIR}; mkdir -p "$out"
 : "${FIBC:?}"; llvm=${LLVM_LIB:-/usr/lib/llvm-21/lib}
 cd "$root" || exit 2
-"$FIBC" build compiler/lairf.fib -I compiler -I lib -L "$llvm" -l LLVM-21 -o "$out/lairf" || { echo "FAIL: lairf did not build"; exit 1; }
-"$FIBC" build compiler/lir2js.fib -I compiler -I lib -o "$out/lir2js" || { echo "FAIL: lir2js did not build"; exit 1; }
+"$FIBC" build compiler/lairf.fib -I compiler -L "$llvm" -l LLVM-21 -o "$out/lairf" || { echo "FAIL: lairf did not build"; exit 1; }
+"$FIBC" build compiler/lir2js.fib -I compiler -o "$out/lir2js" || { echo "FAIL: lir2js did not build"; exit 1; }
 export LAIRF=$out/lairf LIR2JS=$out/lir2js LD_LIBRARY_PATH=$llvm${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} TMPDIR=$out
 ok=0
 "${NODE:-node}" "$here/rt-test.mjs" || ok=1

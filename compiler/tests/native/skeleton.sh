@@ -2,7 +2,7 @@
 # Builds compiler/tests/native/skeleton.fib, a program that requires every module of the lair-in-fibber skeleton (compiler/lir, compiler/native),
 # with a seed fibc, runs it and prints ok. A module of the tree that skeleton.fib does not list is a failure: a module nothing refers to is never
 # loaded, so an unlisted module would not be type-checked.
-# usage: skeleton.sh [OUT]        (from anywhere; FIBC names the fibc to build with, default `fibc` on the PATH; FIB_LIB the library, default the tree's lib/)
+# usage: skeleton.sh [OUT]        (from anywhere; FIBC names the fibc to build with, default `fibc` on the PATH; FIB_LIB the library, default the one the fibc ships)
 # Exit: 0 ok; 1 the build, the run or the module list failed; 2 no fibc.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
@@ -10,7 +10,6 @@ root=$(cd "$here/../../.." && pwd)
 fibc=${FIBC:-fibc}
 command -v "$fibc" >/dev/null 2>&1 || [ -x "$fibc" ] || { echo "skeleton: no fibc: set FIBC" >&2; exit 2; }
 out=${1:-${TMPDIR:-/tmp}/skeleton-$$}
-export FIB_LIB=${FIB_LIB:-$root/lib}
 cd "$root" || exit 2
 
 # every module file of compiler/lir, compiler/native and compiler/lir.fib must be listed in the program
@@ -23,7 +22,7 @@ done
 
 # The lowering modules call LLVM-C: link LLVM as compiler/tests/llvm/build.sh does (the shared library; LLVM_LIBDIR names its directory).
 llvmdir=${LLVM_LIBDIR:-$(llvm-config-21 --libdir 2>/dev/null || echo /usr/lib/llvm-21/lib)}
-if ! "$fibc" build compiler/tests/native/skeleton.fib -I compiler -I lib -L "$llvmdir" -l LLVM-21 -o "$out" 2> "$out.err"; then
+if ! "$fibc" build compiler/tests/native/skeleton.fib -I compiler -L "$llvmdir" -l LLVM-21 -o "$out" 2> "$out.err"; then
   cat "$out.err" >&2; rm -f "$out" "$out.err"; echo "skeleton: FAILED to build" >&2; exit 1
 fi
 rm -f "$out.err"

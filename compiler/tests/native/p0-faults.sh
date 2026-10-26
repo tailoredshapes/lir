@@ -14,13 +14,12 @@ libdir=${LLVM_LIBDIR:-$(llvm-config-21 --libdir 2>/dev/null || echo /usr/lib/llv
 work=${1:-${TMPDIR:-/tmp}/p0-faults-$$}
 jobs_max=${JOBS:-3}
 mkdir -p "$work"
-export FIB_LIB=${FIB_LIB:-$root/lib}
 export LD_LIBRARY_PATH=$libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 cd "$root" || exit 2
 dirs="cases/lir/simd cases/lir/simd-verify"
 build() { # SHADOWDIR OUT: the entry file is a copy of lairf.fib inside the shadow directory, because the directory of the entry file is searched first
   mkdir -p "$1"; cp compiler/lairf.fib "$1/lairf.fib"
-  "$fibc" build "$1/lairf.fib" -I "$1" -I compiler -I lib -L "$libdir" -l LLVM-21 -o "$2"
+  "$fibc" build "$1/lairf.fib" -I "$1" -I compiler -L "$libdir" -l LLVM-21 -o "$2"
 }
 mkdir -p "$work/clean"
 build "$work/clean" "$work/clean/lairf" || { echo "p0-faults: FAILED to build the clean lairf" >&2; exit 1; }

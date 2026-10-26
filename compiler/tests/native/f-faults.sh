@@ -11,12 +11,11 @@ command -v "$fibc" >/dev/null 2>&1 || [ -x "$fibc" ] || { echo "f-faults: no fib
 libdir=${LLVM_LIBDIR:-$(llvm-config-21 --libdir 2>/dev/null || echo /usr/lib/llvm-21/lib)}
 work=${1:-${TMPDIR:-/tmp}/f-faults-$$}
 mkdir -p "$work"
-export FIB_LIB=${FIB_LIB:-$root/lib}
 export LD_LIBRARY_PATH=$libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 cd "$root" || exit 2
 build() { # SHADOWDIR OUT
   # shellcheck disable=SC2086
-  "$fibc" build compiler/tests/native/f-unit.fib -I "$1" -I compiler -I compiler/tests/native -I lib -L "$libdir" -l LLVM-21 -o "$2"
+  "$fibc" build compiler/tests/native/f-unit.fib -I "$1" -I compiler -I compiler/tests/native -L "$libdir" -l LLVM-21 -o "$2"
 }
 mkdir -p "$work/clean"
 build "$work/clean" "$work/clean/f-unit" || { echo "f-faults: FAILED to build the clean test" >&2; exit 1; }

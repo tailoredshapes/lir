@@ -33,7 +33,7 @@ p = sys.argv[1]; s = open(p).read(); a = os.environ["FROM"]; b = os.environ["TO"
 if s.count(a) != 1: sys.exit("the text of the fault occurs %d times in %s" % (s.count(a), p))
 open(p, "w").write(s.replace(a, b))' "$t/compiler/js/$file" || { echo "FAULT NOT PLANTED $name"; missed=$((missed + 1)); continue; }
   if [ "${file#rt/}" = "$file" ]; then
-    (cd "$root" && "$FIBC" build "$t/compiler/lir2js.fib" -I "$t/compiler" -I "$root/lib" -o "$t/lir2js") > "$t/build.log" 2>&1 \
+    (cd "$root" && "$FIBC" build "$t/compiler/lir2js.fib" -I "$t/compiler" -o "$t/lir2js") > "$t/build.log" 2>&1 \
       || { echo "FAULT NOT BUILT $name (log $t/build.log)"; cat "$t/build.log"; missed=$((missed + 1)); continue; }
     lir2js=$t/lir2js
   else

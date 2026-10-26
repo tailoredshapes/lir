@@ -14,12 +14,11 @@ root=$(cd "$(dirname "$0")/../../.." && pwd); cd "$root" || exit 2
 [ -f scripts/portable/env.sh ] && . scripts/portable/env.sh
 F=${1:-${F:-${FIBC:-fibc}}}; L=${L:-${LAIRF:-}}
 command -v "$F" >/dev/null 2>&1 || [ -x "$F" ] || { echo "a64-sibcall: no fibc: set F" >&2; exit 2; }
-export FIB_LIB=$root/lib
 T=$(mktemp -d "${TMPDIR:-/tmp}/a64-sibcall.XXXXXX"); trap 'rm -rf "$T"' EXIT
 bad=0; ok() { echo "ok   $*"; }; no() { echo "FAIL $*"; bad=1; }
 lib=${LLVMLIB:-${LLVM_LIBDIR:-/usr/lib/llvm-21/lib}}
 if [ -z "$L" ]; then
-  "$F" build compiler/lairf.fib -I compiler -I lib -L "$lib" -l LLVM-21 -o "$T/lairf" > "$T/build.log" 2>&1 || { cat "$T/build.log"; echo "a64-sibcall: lairf did not build" >&2; exit 2; }
+  "$F" build compiler/lairf.fib -I compiler -L "$lib" -l LLVM-21 -o "$T/lairf" > "$T/build.log" 2>&1 || { cat "$T/build.log"; echo "a64-sibcall: lairf did not build" >&2; exit 2; }
   L=$T/lairf
 fi
 export LD_LIBRARY_PATH=$lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}

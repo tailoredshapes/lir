@@ -50,7 +50,7 @@ for mode in "${modes[@]}"; do
   esac
   if cmp -s <(cat "$root"/compiler/c/*.fib) <(cat "$d"/c/*.fib); then echo "$mode: the sed changed nothing (the source moved: fix the script)"; status=1; continue; fi
   cp "$root/compiler/lir2c.fib" "$d/lir2c.fib"   # the tool beside the deformed c/: its own directory is searched first, so the copy shadows compiler/c
-  if ! (cd "$root" && "$FIBC" build "$d/lir2c.fib" -I "$d" -I compiler -I lib -o "$d/lir2c") > "$d/build.log" 2>&1; then
+  if ! (cd "$root" && "$FIBC" build "$d/lir2c.fib" -I "$d" -I compiler -o "$d/lir2c") > "$d/build.log" 2>&1; then
     echo "$mode: killed at build time (the mutant does not compile)"; continue; fi
   if [ "$mode" = atomic-order ]; then
     n=$("$d/lir2c" emit "$root/cases/lir/instr/atomic.lir" 2>/dev/null | grep -c '__ATOMIC_SEQ_CST')

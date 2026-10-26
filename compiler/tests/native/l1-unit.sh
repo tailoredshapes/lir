@@ -4,11 +4,10 @@
 set -u
 root=$(cd "$(dirname "$0")/../../.." && pwd)
 cd "$root" || exit 2
-export FIB_LIB=${FIB_LIB:-$root/lib}
 rc=0
 for f in compiler/tests/native/l1-unit-*.fib; do
   out=${TMPDIR:-/tmp}/l1-unit-$$
-  "${FIBC:-fibc}" build "$f" -I compiler -L "${LLVMLIB:-/usr/lib/llvm-21/lib}" -l LLVM-21 -o "$out" || { echo "FAILED to build $f"; rc=1; continue; }
+  "${FIBC:-fibc}" build "$f" -I compiler -I compiler/tests/support -L "${LLVMLIB:-/usr/lib/llvm-21/lib}" -l LLVM-21 -o "$out" || { echo "FAILED to build $f"; rc=1; continue; }
   "$out" | tee "$out.txt"
   if grep -q '^FAIL' "$out.txt"; then rc=1; fi
   rm -f "$out" "$out.txt"
