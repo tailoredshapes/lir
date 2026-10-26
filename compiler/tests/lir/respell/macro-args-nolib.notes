@@ -1,0 +1,1 @@
+compiler/tests/lir/respell/macro-args-nolib.in.lir:3:9: respell: cannot read the module compiler/tests/lir/respell/no-such-module.lir: its macros are unknown

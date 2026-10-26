@@ -1,0 +1,15 @@
+;; No macro library the tool can read: `let` is lIR's own here (spec/lir.md 6.9) and is respelled, a head that is no word of lIR is a macro
+;; of a module the tool cannot see and its arguments stay as written. The module that is imported is not there.
+(IMPORT "no-such-module.lir")
+(DEFINE (f I64) ((I64 a))
+  (BLOCK entry
+    (LET ((v (ADD NSW I64 a (I64 1)))) (RET v))
+    (not-lir (LET ((x 1)) (AND x (GLOBAL x))) (LITERAL-STRUCT 1 2) [a b])
+    (BR done))
+  (BLOCK done
+    (RET (I64 0))))
+(not-lir-either (AND a b) (FUNCTION (x) @x))
+;; a splice defines a macro for the forms after it
+(BEGIN
+  (DEFINE-MACRO splice-made (x) (BLOCK entry (RET (ADD I64 (I64 1) (I64 2))))))
+(splice-made (LET ((x 1)) (OR x 2)))

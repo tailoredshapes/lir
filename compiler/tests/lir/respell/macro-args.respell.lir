@@ -1,0 +1,19 @@
+;; Macro uses whose arguments are the language's own words, beside lIR that is to be respelled (spec/lir.md 12, `lair respell`).
+(REQUIRE-MACROS "macro-args-lib.lir")
+(DEFINE-MACRO twice (x)
+  (BLOCK entry
+    (RET (ADD I64 (I64 1) (I64 2)))))
+(DEFSTRUCT pair (I64 (PTR (ADDRSPACE 1))))
+;; macro uses at the top level: nothing in them is lIR's
+(twice (LET ((x 1)) (AND x (GLOBAL x))) (LITERAL-STRUCT 1 2) [a b] (FUNCTION (a) a) (OR a b))
+(LET [x 1] (AND x (OR x 2)))
+(some-language-form (LET [a 1] (FUNCTION [b] (GLOBAL b))) (LITERAL-STRUCT :k 1))
+;; a use inside a function, and lIR around it
+(DEFINE (f I64) ((I64 a) ((PTR (ADDRSPACE 1)) OWNED p))
+  (BLOCK entry
+    (twice (LET ((x 1)) (AND x (GLOBAL x))) (LITERAL-STRUCT 1 2))
+    (LET ((v (ADD NSW I64 a (I64 1)))) (RET v))
+    (unless (AND a (OR a a)) (FUNCTION (q) q))
+    (BR done))
+  (BLOCK done
+    (RET (I64 0))))

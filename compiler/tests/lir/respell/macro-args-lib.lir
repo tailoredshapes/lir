@@ -1,0 +1,8 @@
+;; macro-args.sh's library (compiler/tests/lir/respell.sh): a macro named in lower case, `let`, which a language may define in the new
+;; spelling, and one more.
+(define-macro let (bindings body ...)
+  (block entry
+    (ret (call (global lir.sexp.list) body))))
+(define-macro unless (c body ...)
+  (block entry
+    (ret (call (global lir.sexp.list) c body))))

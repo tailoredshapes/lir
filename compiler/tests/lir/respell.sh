@@ -8,6 +8,10 @@
 #      build forms at macro time, which the tool cannot see), `lairf --new-spelling dump-ast` of the respelled file equals 1's output: the
 #      file holds nothing of the old spelling. A file in RELEASED is excepted: its verdict comes from a rule the new spelling drops (the
 #      reserved words and the sigils as names), so the strict read accepts what the old refused.
+# and the fixtures of compiler/tests/lir/respell/ (spec/lir.md 12): for each NAME.in.lir, `respell` gives NAME.out.lir (the default,
+# `--macro-args keep`: the arguments of a macro use stay as written, the define-macro bodies and the lIR around them are respelled) and,
+# where there is one, `--macro-args respell` gives NAME.respell.lir; the notes on stderr are NAME.notes (none when there is no such file);
+# NAME.out.lir is its own respelling; a form the tool cannot lex is skipped with a note, not a failure.
 # usage: compiler/tests/lir/respell.sh FIBC   (LAIRF names a built lairf; OUT the scratch, default $TMPDIR/lir-respell)
 # Prints the counts; exit 0 when every file held, 1 otherwise, 2 when nothing could be built.
 set -u
@@ -34,12 +38,14 @@ POSITIONAL="cases/lir/macros/position.lir cases/lir/readers/positions.lir"
 strip() { sed -E 's/^([ ]*[a-z-]+) [0-9]+:[0-9]+/\1/; s/@[0-9]+:[0-9]+/@/g; s/:[0-9]+:[0-9]+: error:/: error:/g' | awk '/error:/ { $0 = tolower($0) } { print }'; }
 dump() { (ulimit -v 4000000; timeout 120 "$L" "$1" dump-ast "$2" 2>&1; echo "status $?") | sed "s|$out/tree/||g" | strip; }
 files=$(find cases/lir compiler/tests/native/h2-edge lib/lir -name '*.lir' | sort)
-n=0; converted=0; bad=0; strict=0; skipped=0; unread=0; : > "$out/unread"
+n=0; converted=0; bad=0; strict=0; skipped=0; unread=0; lenient=0; : > "$out/unread"; : > "$out/lenient"
 for f in $files; do
   n=$((n + 1))
   mkdir -p "$out/tree/$(dirname "$f")"
   if ! (ulimit -v 4000000; timeout 120 "$L" respell "$f" > "$out/tree/$f" 2> "$out/err"); then
-    cp "$f" "$out/tree/$f"; unread=$((unread + 1)); echo "$f" >> "$out/unread"   # a text the reader refuses (a lexical case) is left as it is
+    cp "$f" "$out/tree/$f"; unread=$((unread + 1)); echo "$f" >> "$out/unread"   # a text the tool cannot read at all is left as it is
+  elif grep -q ': respell: skipped' "$out/err"; then
+    echo "$f" >> "$out/lenient"   # forms its lexer refuses are left as written, with a note: the rest is respelled, but not all of it
   fi
 done
 # The texts the cases include that are not lIR files of their own (a file that starts with a byte order mark cannot carry a case header),
@@ -53,6 +59,7 @@ for f in $files; do
   if ! cmp -s "$out/a" "$out/b"; then echo "FAIL $f: the respelled file parses differently:"; diff "$out/a" "$out/b" | head -5; bad=$((bad + 1)); continue; fi
   if ! (ulimit -v 4000000; timeout 120 "$L" respell --check "$g" > "$out/c" 2>&1); then echo "FAIL $f: respell is not idempotent on it:"; head -4 "$out/c"; bad=$((bad + 1)); continue; fi
   converted=$((converted + 1))
+  if grep -qx "$f" "$out/lenient"; then lenient=$((lenient + 1)); skipped=$((skipped + 1)); continue; fi
   if grep -qE '^\((define-macro|require-macros|import|define-reader-macro|define-dispatch-macro|define-token-reader) ' "$f" || [[ " $RELEASED " == *" $f "* ]]; then
     skipped=$((skipped + 1)); continue
   fi
@@ -60,5 +67,21 @@ for f in $files; do
   if ! cmp -s "$out/a" "$out/c"; then echo "FAIL $f: the respelled file is not in the new spelling alone:"; diff "$out/a" "$out/c" | head -5; bad=$((bad + 1)); continue; fi
   strict=$((strict + 1))
 done
-echo "respell: $n files, $unread unreadable and left as they are, $converted round-trip equal and idempotent, $strict of them pure new spelling under --new-spelling, $skipped not checked strictly (macro libraries, released names, unreadable), $bad failed"
+# the fixtures: run from the root with the paths as written, so that the notes name them
+fx=compiler/tests/lir/respell; fixtures=0
+for in in "$fx"/*.in.lir; do
+  base=${in%.in.lir}; fixtures=$((fixtures + 1))
+  (ulimit -v 4000000; timeout 120 "$L" respell "$in" > "$out/fx" 2> "$out/fx.notes")
+  if [ $? -ne 0 ]; then echo "FAIL $in: respell failed:"; head -3 "$out/fx.notes"; bad=$((bad + 1)); continue; fi
+  if ! cmp -s "$out/fx" "$base.out.lir"; then echo "FAIL $in: the respelling is not $base.out.lir:"; diff "$base.out.lir" "$out/fx" | head -8; bad=$((bad + 1)); continue; fi
+  if [ -f "$base.notes" ]; then want=$base.notes; else want=/dev/null; fi
+  if ! cmp -s "$out/fx.notes" "$want"; then echo "FAIL $in: the notes are not $want:"; diff "$want" "$out/fx.notes" | head -8; bad=$((bad + 1)); continue; fi
+  if [ -f "$base.respell.lir" ]; then
+    (ulimit -v 4000000; timeout 120 "$L" respell "$in" --macro-args respell > "$out/fx" 2> /dev/null)
+    if ! cmp -s "$out/fx" "$base.respell.lir"; then echo "FAIL $in: --macro-args respell is not $base.respell.lir:"; diff "$base.respell.lir" "$out/fx" | head -8; bad=$((bad + 1)); continue; fi
+  fi
+  if ! (ulimit -v 4000000; timeout 120 "$L" respell --check "$base.out.lir" > "$out/fx" 2> /dev/null); then echo "FAIL $base.out.lir: respell is not idempotent on it:"; head -4 "$out/fx"; bad=$((bad + 1)); fi
+done
+echo "respell: $fixtures fixtures of $fx (macro arguments kept, unlexable forms skipped)"
+echo "respell: $n files, $unread unreadable and left as they are, $converted round-trip equal and idempotent, $strict of them pure new spelling under --new-spelling, $skipped not checked strictly (macro libraries, released names, unreadable, $lenient with forms skipped), $bad failed"
 [ "$bad" -eq 0 ]

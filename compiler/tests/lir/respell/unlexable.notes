@@ -1,0 +1,5 @@
+compiler/tests/lir/respell/unlexable.in.lir:6:1: respell: skipped, left as written: invalid escape \d at 6:15
+compiler/tests/lir/respell/unlexable.in.lir:9:1: respell: skipped, left as written: unterminated vector type at 9:17
+compiler/tests/lir/respell/unlexable.in.lir:11:1: respell: skipped, left as written: unexpected closing bracket
+compiler/tests/lir/respell/unlexable.in.lir:12:1: respell: skipped, left as written: mismatched closing bracket at 13:30
+compiler/tests/lir/respell/unlexable.in.lir:16:1: respell: skipped, left as written: unexpected end of input: unclosed list at 16:1

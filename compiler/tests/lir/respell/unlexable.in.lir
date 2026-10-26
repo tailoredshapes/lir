@@ -1,0 +1,16 @@
+;; Forms the tool's lexer refuses (a reader macro of the module reads them): they are left as written, the rest is respelled.
+(define-reader-macro "#" (stream)
+  (block entry (ret (i64 0))))
+(define (f i64) ((i64 a))
+  (block entry (ret (add i64 a (i64 1)))))
+(gloss.dump #"\d+" #"a\"b")
+(define (g i64) ((i64 a))
+  (block entry (ret (mul i64 a (i64 2)))))
+(gloss.dump 3.5 < <= << (< a b) <-)
+(declare h i64 (i64))
+)
+(define (k i64)
+  (block entry (ret (i64 1)))]
+(define (m i64) ((i64 a))
+  (block entry (ret (sub i64 a (i64 1)))))
+[1 2
