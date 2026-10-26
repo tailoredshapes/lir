@@ -8,3 +8,10 @@ differ cases/lir/simd/target-host-lacks.lir
 # ("cannot tail-call: memory reference or volatile after call"), and the printer does not assume AVX-512, so it refuses the <8 x i64>
 # tail call of this case (c.policy `result-in-memory?`); --allow-plain-tail-calls makes it a warning and a plain call.
 refused cases/lir/adversarial/tail-result-registers.lir
+# Found when the lir repository first ran this check in its gate (2026-10-26; the check was in no gate of fibber's, and the two cases are
+# newer than this list). Gaps of the C backend, to be fixed there, not hidden:
+# spec/lir.md 6.6b: `(stack-addr)` through C prints `deeper BAD` (gcc -O2: the callee's stack address is not below the caller's, likely
+# because gcc inlines @inner into @outer); lairf prints `deeper ok`.
+differ cases/lir/inline/stack-addr.lir
+# spec/lir.md 4.9: lir2c does not carry `(dependent-library "z")` to the link, so `cc` leaves crc32 undefined (no -lz).
+cc-error cases/lir/link/dependent-library.lir

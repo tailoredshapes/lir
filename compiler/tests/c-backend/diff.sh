@@ -52,6 +52,9 @@ done
 
 one() {
   f=$1; name=${f#"$root"/}; d=$work/run/$(echo "$name" | tr '/' '_'); mkdir -p "$d"
+  # The case's mode of the ownership verifier (spec/lir.md 6.14.5, the header's `own:` line, as `lairf cases` reads it) for both runs, as
+  # compiler/tests/js/diff.sh does: lir2c checks with lair's checker, so under `verify` it refuses what lairf refuses, with the same text.
+  own=$(sed -n 's/^;; own: *//p' "$f" | head -1); export FIB_LIR_OWN=${own:-report}
   ulimit -c 0; exec 2> /dev/null
   if [ "${f%.fib}" != "$f" ]; then
     inc=(); for r in $(sed -n 's/^;; roots: *//p' "$f" | head -1); do inc+=(-I "$(dirname "$f")/$r"); done
@@ -62,6 +65,7 @@ one() {
   if [ $ns -eq 124 ]; then echo "skip $name: the native run timed out"; return; fi
   # `fatal signal N at 0x..` is written by lairf's own runtime (rt/thread.lir, the JIT shares its process), not by the program
   grep -v '^fatal signal [0-9]* at 0x' "$d/n.err0" > "$d/n.err"
+  sed -i '/^lir\.own: /d' "$d/n.err"   # the ownership verifier's report-mode summary (spec/lir.md 6.14.5) is the checker's line, printed by `lairf run` before the program runs (as in js/diff.sh)
   reject=0; grep -q '^;; expect: reject' "$f" && reject=1
   # A file that defines or requires macros (spec/lir.md 4.6), imports (4.7) or defines reader macros (4.8): lir2c has no compile-time runtime, so it
   # reads the expanded lIR `lairf expand` prints; an expansion lairf refuses is the verdict lir2c is compared with (the backend never sees such a
