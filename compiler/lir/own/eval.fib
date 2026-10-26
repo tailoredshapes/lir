@@ -253,13 +253,15 @@
 (defun callee-text (callee: LCallee) -> str
   (match callee ((CalDirect n) (str "call to @" n)) ((CalIndirect _ _) "indirect-call")))
 
+;; A tail call's result is the function's result, handed to the caller as `ret`'s operand is: it is not a value of this frame, so
+;; nothing here consumes it (rule 1).
 (defun eval-call (cx: LoCx callee: LCallee args: (Vec LExpr) tail: bool pos: i64) -> LoV
   (let ((ty (callee-type cx callee)) (what (callee-text callee)))
     (do (indirect-check cx callee pos)
         (let ((vals (loop ((i 0) (acc: (Vec LoV) []))
                       (if (>= i (count args)) acc (recur (+ i 1) (conj acc (eval-arg cx ty what i (nth args i))))))))
           (do (when tail (tail-check cx vals pos))
-              (if (managed-result? cx callee) (LoV kd-owned -1 [] -1 "") val-scalar))))))
+              (if (and (not tail) (managed-result? cx callee)) (LoV kd-owned -1 [] -1 "") val-scalar))))))
 
 ;; One argument: consumed at an owned position, borrowed elsewhere (and its evidence lost: the callee may copy it).
 (defun eval-arg (cx: LoCx ty: (Option LFnType) what: str i: i64 a: LExpr) -> LoV

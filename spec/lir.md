@@ -1556,7 +1556,10 @@ ownership form costs one walk. The rules, each with its diagnostic
 (`FILE:LINE:COL: error: ownership rule N: ..` at the form at fault):
 
 1. **Linearity.** An owned value is consumed exactly once on every path
-   from its definition to a `ret` or a tail call. The consuming uses are
+   from its definition to a `ret` or a tail call. A tail call's result is
+   the function's result, handed to the caller as `ret`'s operand is: it is
+   not a value of the frame, and nothing in the frame consumes it. The
+   consuming uses are
    `destroy-value`, an `owned` argument position of a call, `ret`, `store
    init` and `store assign`, and being the incoming value of a `phi` (the
    edge consumes it). A second consume on one path is `ownership rule 1:

@@ -1,0 +1,27 @@
+;; expect: accept
+;; own: verify
+;; out: alloc 5 size 32
+;; out: n 5
+;; out: free 5
+;; spec/lir.md 6.14.5 rule 1: a tail call's result is the function's result, handed to the caller as ret's operand is, so the frame
+;; that tail-calls consumes nothing for it. The owned value mk makes reaches main through a tailcall and an indirect-tailcall and is
+;; destroyed once there. (gloss chunk 0: the TAILCALL in direct and the INDIRECT-TAILCALL in indirect were refused by rule 1.)
+(IMPORT "import-base.lir")
+(DECLARE printf I32 (PTR ...))
+(DEFINE INTERNAL TAILCC (mk (PTR (ADDRSPACE 1))) ((I32 tid))
+  (BLOCK entry
+    (LET ((x (ALLOC-OBJECT (STRUCT box) tid)))
+      (STORE (I64 5) (GETELEMENTPTR (STRUCT box) x (I32 0) (I32 1)))
+      (STORE INIT ((PTR (ADDRSPACE 1)) NULL) (GETELEMENTPTR (STRUCT box) x (I32 0) (I32 2)))
+      (RET x))))
+(DEFINE INTERNAL TAILCC (keep (PTR (ADDRSPACE 1))) (((PTR (ADDRSPACE 1)) OWNED x)) (BLOCK entry (RET x)))
+(DEFINE INTERNAL TAILCC (direct (PTR (ADDRSPACE 1))) ((I32 tid)) (BLOCK entry (TAILCALL (GLOBAL mk) tid)))
+(DEFINE INTERNAL TAILCC (indirect (PTR (ADDRSPACE 1))) (((PTR (ADDRSPACE 1)) OWNED x))
+  (BLOCK entry (INDIRECT-TAILCALL (GLOBAL keep) (FUNCTION TAILCC (PTR (ADDRSPACE 1)) ((OWNED (PTR (ADDRSPACE 1))))) x)))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (LET ((a (CALL (GLOBAL direct) (I32 5)))
+          (b (CALL (GLOBAL indirect) a)))
+      (CALL (GLOBAL printf) (STRING "n %lld\n") (LOAD I64 (GETELEMENTPTR (STRUCT box) b (I32 0) (I32 1))))
+      (DESTROY-VALUE b)
+      (RET (I32 0)))))
