@@ -1,0 +1,21 @@
+;; expect: reject
+;; own: verify
+;; error: 20:29: error: ownership rule 1: owned d is consumed twice
+;; spec/lir.md 6.14.5 rule 1: d is passed at two owned positions of one call, so the call consumes it twice. d is a call's result and
+;; the function has no other managed value (gloss chunk 0, own/lk/leakA.lir `twice`).
+(IMPORT "import-base.lir")
+(DEFINE (mk (PTR (ADDRSPACE 1))) ()
+  (BLOCK entry
+    (LET ((x (ALLOC-OBJECT (STRUCT box) (I32 7))))
+      (STORE INIT ((PTR (ADDRSPACE 1)) NULL) (GETELEMENTPTR (STRUCT box) x (I32 0) (I32 2)))
+      (RET x))))
+(DEFINE (eat2 VOID) (((PTR (ADDRSPACE 1)) OWNED x) ((PTR (ADDRSPACE 1)) OWNED y))
+  (BLOCK entry
+    (DESTROY-VALUE x)
+    (DESTROY-VALUE y)
+    (RET)))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (LET ((d (CALL (GLOBAL mk))))
+      (CALL (GLOBAL eat2) d d)
+      (RET (I32 0)))))

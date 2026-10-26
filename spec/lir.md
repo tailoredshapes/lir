@@ -1552,7 +1552,9 @@ section 3, rule 3). It is one forward dataflow per function over the
 CFG `lir.check` built, keeping for each owned and stack value whether it
 is live or consumed at each point, and for each fresh value whether its
 uniqueness evidence holds. A function with no `(PTR (ADDRSPACE 1))` value and no
-ownership form costs one walk. The rules, each with its diagnostic
+ownership form costs one walk; a call whose result is `(PTR (ADDRSPACE 1))`
+defines such a value, so a function whose only managed value is a call's
+result is verified. The rules, each with its diagnostic
 (`FILE:LINE:COL: error: ownership rule N: ..` at the form at fault):
 
 1. **Linearity.** An owned value is consumed exactly once on every path

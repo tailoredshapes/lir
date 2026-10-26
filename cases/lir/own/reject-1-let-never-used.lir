@@ -1,0 +1,10 @@
+;; expect: reject
+;; own: verify
+;; error: 10:7: error: ownership rule 1: owned x is leaked at ret
+;; spec/lir.md 6.14.5 rule 1: an owned value bound by let and never used is live at ret, on a path with no branch (the dual of
+;; reject-1-leak-in-branch.lir, where one path consumes it).
+(IMPORT "import-base.lir")
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (LET ((x (ALLOC-OBJECT (STRUCT box) (I32 7))))
+      (RET (I32 0)))))
