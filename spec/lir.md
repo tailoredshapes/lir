@@ -693,8 +693,8 @@ and `;` included (`#(`, `#;`), since the `#` is read first. A later binding of a
 
 **Reading.** At each form the reader looks at its first character. A bound character runs its reader macro with the stream just after
 it. `#`, once any dispatch macro is bound and `#` itself is not a reader macro, runs the dispatch macro of the character after it with the
-stream after both; `#` before an unbound character is `no dispatch macro for #C` at the `#`, and at the end of the text `unexpected end
-of input after #`. With `#` bound as a reader macro, that macro runs and the dispatch macros are not reached. Anything else is lIR's own
+stream after both; `#` before an unbound character is `no dispatch macro for #C` at the `#`, `C` the character whole, a multibyte one
+included (`#é`, `cases/lir/readers/reject-dispatch-multibyte.lir`), and at the end of the text `unexpected end of input after #`. With `#` bound as a reader macro, that macro runs and the dispatch macros are not reached. Anything else is lIR's own
 syntax; an atom (§1: its delimiters are the reader's and the classes', so `7/2`, `1_000` and `1.5f32` are one atom each) is read as it
 always was, and when the module has a token reader it is then called with the stream after the atom and the atom's text as a
 **symbol** object, whatever the text (`42` and `1.5` arrive as the symbols `42` and `1.5`: a number of lIR's is the token reader's to

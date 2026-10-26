@@ -274,14 +274,15 @@
                            (nil (do (push rd atom) nil))
                            ((some e) (run-entry rd run e pos start (some atom))))))))))
 
-;; The macro of the byte after `#`, the stream after both; `#` at the end of the text, or before an unbound byte, is an error at the `#`.
+;; The macro of the byte after `#`, the stream after both; `#` at the end of the text, or before an unbound byte, is an error at the `#`
+;; that names the character after it whole (a multibyte one too: its lead byte alone is no text).
 (defun read-dispatch :private (rd: Reader run: Runner pos: i64) -> (Option Diagnostic)
   (let ((lx (. rd lx)) (start (lex-offset lx)))
     (do (bump lx)
         (let ((c (lex-byte lx)))
           (match (if (< c 0) nil (get @(. (. rd table) dispatch) c))
             ((some e) (do (bump lx) (run-entry rd run e pos start nil)))
-            (nil (some (Diagnostic pos (if (< c 0) "unexpected end of input after #" (str "no dispatch macro for #" (byte-text c)))))))))))
+            (nil (some (Diagnostic pos (if (< c 0) "unexpected end of input after #" (str "no dispatch macro for #" (lex-char-text lx)))))))))))
 
 ;; The entry run by the host: its form pushed, spanning the text from `start` to where the run left the stream (`sexp-fill-span`), nothing
 ;; for no form. A reader macro's or a dispatch macro's run is a level of nesting, as a list is (it reads what is inside it); the token

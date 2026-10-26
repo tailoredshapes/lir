@@ -1,0 +1,11 @@
+;; expect: reject
+;; error: 11:41: error: no dispatch macro for #é
+;; spec/lir.md 4.8: # before a character with no dispatch macro is an error at the # that names the character, a multibyte one whole
+;; (é is the two bytes C3 A9). lair once named the lead byte alone, which is no UTF-8 text, and aborted (`trap: str-from-bytes:
+;; invalid UTF-8`) instead of reporting the error.
+(DEFINE-DISPATCH-MACRO "_" (s)
+  (BLOCK entry
+    (CALL (GLOBAL lir.read.form) s)
+    (RET (PTR NULL))))
+(DECLARE printf I32 (PTR ...))
+(DEFINE (main I32) () (BLOCK entry (RET #é)))
