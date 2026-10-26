@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+# The gate on Linux x86-64: the seed SEED names (a public fibber release) is fetched and verified, it builds lairf, lir2c and lir2js against
+# LLVM 21 (shared), and `make gate` runs the cases, the goldens, the unit programs, the tool tests, the C and JavaScript differential checks
+# and lair's fixed point. The report says PASS or FAIL, one line per stage.
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        timeout-minutes: 5
+
+      - name: Install LLVM 21, a C compiler and Node.js
+        timeout-minutes: 15
+        run: |
+          wget -qO llvm.sh https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 21
+          sudo apt-get install -y llvm-21-dev gcc python3 curl
+          ls -l /usr/lib/llvm-21/lib/libLLVM-21.so
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: The gate (make)
+        timeout-minutes: 100
+        run: |
+          jobs=$(nproc)
+          [ "$jobs" -le 4 ] || jobs=4
+          make -j"$jobs" gate CASE_JOBS=2 FIB_SEED_CACHE="$RUNNER_TEMP/seeds"
+
+      - name: Keep the logs of a failed gate
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-logs
+          path: |
+            build/gate/*.log
+            build/bin/*.log
