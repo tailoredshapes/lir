@@ -548,8 +548,9 @@ While a module macro is armed, written or spliced, the forms are collected for i
 above), so a whole program's files reach one macro: a wrapper that arms the macro and includes them is the program. A diagnostic in the
 macro's result is reported in the module's file, at the line and column the form carries.
 
-A macro that returns null without `fail` is `macro NAME returned no form`; one that returns an object that is not one of the kinds, or a
-list deeper than 512, is `macro NAME returned ..`. The objects live until the module is parsed and are never freed before that; a
+A macro that returns null without `fail` is `macro NAME returned no form`; one that returns an object that is not one of the kinds, a
+symbol whose text is not UTF-8 (a symbol is the parser's atom; a string is any bytes), or a list deeper than 512, is `macro NAME returned
+..` (`cases/lir/macros/reject-symbol-not-utf8.lir`). The objects live until the module is parsed and are never freed before that; a
 macro that traps ends lair as it would a program. The functions are implemented as an lIR module of lair's (`compiler/native/macros/lib.fib`),
 compiled once into the macro session of a module that defines a macro; a module that defines none makes no session.
 

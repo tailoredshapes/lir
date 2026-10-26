@@ -1,0 +1,10 @@
+;; expect: reject
+;; error: 10:36: error: macro bad returned a symbol whose text is not UTF-8
+;; spec/lir.md 4.6: a symbol's text is the parser's atom, UTF-8 text; a macro that returns a symbol of other bytes (here the lead byte
+;; C3 with no continuation byte after it) is `macro NAME returned ..` at the use. lair once aborted on it (`trap: str-from-bytes: invalid
+;; UTF-8`) instead of reporting the error. A string may hold any bytes (strings.lir).
+(DEFINE-MACRO bad ()
+  (BLOCK entry
+    (RET (CALL (GLOBAL lir.sexp.symbol) (STRING "\xC3")))))
+(DECLARE printf I32 (PTR ...))
+(DEFINE (main I32) () (BLOCK entry (bad) (RET (I32 0))))
