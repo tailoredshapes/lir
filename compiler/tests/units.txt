@@ -1,0 +1,19 @@
+# compiler/tests/units.txt: the unit programs `make gate` builds with the seed and runs (scripts/unit.sh: exit 0, no FAIL line), one path per
+# line.
+compiler/tests/lir/unit-ast.fib
+compiler/tests/lir/unit-facts.fib
+compiler/tests/lir/unit-lit.fib
+compiler/tests/lir/unit-types.fib
+compiler/tests/lir/k1-core.fib
+compiler/tests/native/h-header.fib
+compiler/tests/native/h-exec.fib
+compiler/tests/native/l1-unit-lower.fib
+compiler/tests/native/j-unit.fib
+compiler/tests/native/j-smoke.fib
+compiler/tests/native/f-unit.fib
+compiler/tests/native/a-unit.fib
+compiler/tests/native/k2/k2-rules.fib
+# Not run: compiler/tests/native/l2-lower.fib fails (`misc: DIFF line 6`: its golden l2/misc.ll has `@.str = private unnamed_addr
+# constant`, lair now prints `private constant`). It was in no gate of fibber's either; the golden or the lowering is to be decided, not
+# changed quietly (CLAUDE.md). compiler/tests/native/skeleton.fib: see mk/checks.mk. compiler/tests/native/h-cases.fib is a harness
+# over fixtures, not a test (it prints the cases it collects).

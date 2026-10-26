@@ -37,7 +37,8 @@ for them.
 
 ## Build
 
-You need Linux on x86-64 (or macOS on Apple silicon), GNU Make 4, LLVM 21
+You need Linux on x86-64 (`SEED` also names a seed for macOS on Apple
+silicon, but this repository's gate has not run there yet), GNU Make 4, LLVM 21
 (the shared `libLLVM-21`), a C compiler, curl, and Node.js for the
 JavaScript backend's check.
 

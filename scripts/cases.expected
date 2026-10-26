@@ -1,0 +1,3 @@
+# scripts/cases.expected: the cases of cases/lir that may fail under `scripts/cases.sh` (one repository-relative path per line, each with
+# its reason in a comment above it). The list is empty: every case passes. A case that starts failing fails the gate until it is fixed or
+# listed here with its reason.
