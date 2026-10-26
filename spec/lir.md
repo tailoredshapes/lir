@@ -245,6 +245,7 @@ item   ::= (DEFSTRUCT MUTABLE? NAME (type*))       ; mutable: its fields may be 
          | (DEFINE-DISPATCH-MACRO STR (PNAME) block+)   ; a reader macro on the character after # (§4.8)
          | (DEFINE-READER-CLASS STR class)              ; a character's class (§4.8)
          | (DEFINE-READER-DEPTH N)                         ; the nesting the reader allows (§4.8)
+         | (DEFINE-READER-BOM SKIP)                        ; a byte order mark at the start of a text read after it is skipped (§4.8)
          | (DEFINE-TOKEN-READER (PNAME PNAME) block+)      ; the module's token reader (§4.8)
          | (BEGIN item*)                                   ; a splice: each form a top-level form in its place (§4.6)
 class  ::= WHITESPACE | CONSTITUENT | TERMINATING
@@ -264,7 +265,7 @@ Anything else at the top level is an error `expected a top-level form
 (liar silently ignored top-level expressions, `lir-audit/fuzz2.txt`). The
 message names the forms of the first M3 pass; `(TARGET ..)` (§4.5) is a top-level form too, and
 is left out of the text so that the Rust `lair`, the oracle of the compare scripts, says the same;
-so are `define-macro` and `require-macros` (§4.6), `import` (§4.7) and the five reader forms of §4.8, which are not items but directions to the
+so are `define-macro` and `require-macros` (§4.6), `import` (§4.7) and the six reader forms of §4.8, which are not items but directions to the
 reader, and a macro use whose macro is not yet defined gets this message too.
 Items may appear in any order and refer to each other in any order; a macro must be defined
 before it is used (§4.6).
@@ -667,6 +668,7 @@ forms on without consulting anything.
 (DEFINE-TOKEN-READER (STREAM TOKEN) block+)    ; after every atom: the atom's text as a symbol, and the macro returns the form to use
 (DEFINE-READER-CLASS "C" CLASS)                ; C is whitespace, constituent or terminating to the lexer from here on
 (DEFINE-READER-DEPTH N)                        ; forms nest N deep at most (1024 unless set; at most 4096)
+(DEFINE-READER-BOM SKIP)                       ; a byte order mark at the start of a text read after this is skipped
 ```
 
 **Character classes.** lIR's own whitespace (§1: space, tab, the other ASCII controls 9 to 13, comma, Unicode's White_Space) and its
@@ -687,6 +689,15 @@ an earlier; a character with no class set is what lIR's own lexer makes of it. A
 list is a level, and so is a reader macro's or a dispatch macro's run (it reads what is inside it: `'x` and `[x]` are one level each,
 as fibber counts them); the token reader's run is not. fibber's 1000 (`TooDeep` at the 1001st frame) is `(DEFINE-READER-DEPTH 1000)`,
 which gloss's layer 2 sets; a comparison harness that wraps a module in one more form sets one more.
+
+**The byte order mark.** U+FEFF (the bytes EF BB BF) at offset 0 of a text is, to lIR's own lexer, a character like any other (§1:
+it is no Unicode White_Space), so it starts an atom. A language may skip it: `(DEFINE-READER-BOM SKIP)` makes the reader pass a byte
+order mark at offset 0 of every text read after the form under the table (an included file, a required library), the byte offsets of
+spans counting its three bytes and the columns of line 1 not (the first form of a file that starts with one is at 1:1, its span from
+3), as fibber's reader does; one anywhere else is still the lexer's (an atom's character, which the language's token reader may
+refuse, as fibber refuses one with InvalidCharacter). The form is read after the text that holds it began, so it never reaches that
+text's own start: a wrapper or a library sets it for the files it includes (`cases/lir/readers/bom.lir`, `reject-bom-elsewhere.lir`).
+`SKIP` is the one choice (`define-reader-bom expects skip`); lIR's own reading is the default, and there is nothing to set back.
 
 **Definition.** Each body is compiled as a macro's is (§4.6: blocks only, checked when read, the `lir.sexp.*` functions and the
 stream's below declared in it, errors prefixed `reader macro C:`, `dispatch macro #C:` or `token reader:`), under a name of its own in
@@ -727,8 +738,8 @@ does for a module with no readtable, §1), since that text is the macros' to rea
 
 **Scope.** A binding applies to the forms after the form that made it, in the module and in a library it is made in; the bindings a
 library makes with `require-macros` (§4.6) are the requiring module's from the require on: a library's reader forms go into the one
-readtable the module and its libraries share (its classes and its depth too), so the smallest import carries syntax as it carries macros
-(`lib/lir/readers.lir`, `cases/lir/readers/required.lir`). A library may hold the five reader forms beside `define-macro` and
+readtable the module and its libraries share (its classes, its depth and its byte order mark too), so the smallest import carries syntax as it carries macros
+(`lib/lir/readers.lir`, `cases/lir/readers/required.lir`). A library may hold the six reader forms beside `define-macro` and
 `require-macros`. The readtable is the module's and ends with it; another module starts with none. An `import` (§4.7) crosses no
 readtable: an imported module is read under its own table, with the bindings its own text and its own required libraries make, and
 none of the importer's (`cases/lir/readers/reject-import-leak.lir`: the importer's `?` is `undefined name ?` in the module it imports);

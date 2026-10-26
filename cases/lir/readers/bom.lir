@@ -1,0 +1,27 @@
+;; expect: accept
+;; out: 10709
+;; spec/lir.md 4.8: (DEFINE-READER-BOM SKIP) makes the reader pass a byte order mark at offset 0 of a text read after it, the offsets
+;; counting its three bytes and the columns of line 1 not. bom-included.txt starts with one and then (spot x); spot makes the global
+;; spot-place of x's line, column and start (L*10000 + C*100 + S): line 1, column 7 (the ( is at column 1), byte 9 (3 + 6).
+(DECLARE printf I32 (PTR ...))
+(DEFINE-MACRO lit64 (v)
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l v)
+      (RET l))))
+(DEFINE-MACRO spot (x)
+  (BLOCK entry
+    (LET ((g (CALL (GLOBAL lir.sexp.list) (I64 0)))
+          (n (ADD (MUL (CALL (GLOBAL lir.sexp.line) x) (I64 10000)) (ADD (MUL (CALL (GLOBAL lir.sexp.column) x) (I64 100)) (CALL (GLOBAL lir.sexp.start) x)))))
+      (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.sexp.symbol) (STRING "GLOBAL")))
+      (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.sexp.symbol) (STRING "spot-place")))
+      (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.macro.lit64) (CALL (GLOBAL lir.sexp.integer) n)))
+      (RET g))))
+(DEFINE-READER-BOM SKIP)
+(INCLUDE "bom-included.txt")
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%lld\n") (LOAD I64 (GLOBAL spot-place)))
+    (RET (I32 0))))

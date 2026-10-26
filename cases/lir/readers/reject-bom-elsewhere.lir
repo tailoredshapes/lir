@@ -1,0 +1,8 @@
+;; expect: reject
+;; error: 7:1: error: include: cases/lir/readers/bom-later.txt:4:1: error: expected a top-level form
+;; spec/lir.md 4.8: (DEFINE-READER-BOM SKIP) passes a byte order mark at offset 0 of a text and nowhere else: bom-later.txt holds one at
+;; the start of its line 4, which is the lexer's as before, an atom (U+FEFF is no whitespace) and no top-level form, at 4:1.
+(DECLARE printf I32 (PTR ...))
+(DEFINE-READER-BOM SKIP)
+(INCLUDE "bom-later.txt")
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))

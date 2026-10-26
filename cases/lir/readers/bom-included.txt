@@ -1,0 +1,3 @@
+﻿(spot x)
+;; spec/lir.md 4.8: the text cases/lir/readers/bom.lir includes, which starts with a byte order mark (EF BB BF): not a case of its
+;; own (a case starts with its header), so not a .lir file.

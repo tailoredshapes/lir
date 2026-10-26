@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 5:1: error: define-reader-bom expects skip
+;; spec/lir.md 4.8: SKIP is the one choice of (DEFINE-READER-BOM ..); lIR's own reading of a byte order mark is the default, with
+;; nothing to set back.
+(DEFINE-READER-BOM WHITESPACE)
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))

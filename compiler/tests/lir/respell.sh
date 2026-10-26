@@ -42,6 +42,9 @@ for f in $files; do
     cp "$f" "$out/tree/$f"; unread=$((unread + 1)); echo "$f" >> "$out/unread"   # a text the reader refuses (a lexical case) is left as it is
   fi
 done
+# The texts the cases include that are not lIR files of their own (a file that starts with a byte order mark cannot carry a case header),
+# copied as they are so that an include in the tree finds them.
+find cases/lir -type f ! -name '*.lir' | while read -r d; do mkdir -p "$out/tree/$(dirname "$d")"; cp "$d" "$out/tree/$d"; done
 for f in $files; do
   g=$out/tree/$f
   if grep -qx "$f" "$out/unread"; then skipped=$((skipped + 1)); continue; fi

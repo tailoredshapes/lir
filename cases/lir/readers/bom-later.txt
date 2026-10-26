@@ -1,0 +1,4 @@
+;; spec/lir.md 4.8: the text cases/lir/readers/reject-bom-elsewhere.lir includes: a byte order mark at the start of line 4, not
+;; at offset 0, which (DEFINE-READER-BOM SKIP) leaves to the lexer. Not a case of its own (a case of this text has no main).
+
+﻿(DECLARE puts I32 (PTR))
