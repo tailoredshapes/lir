@@ -1552,11 +1552,16 @@ section 3, rule 3). It is one forward dataflow per function over the
 CFG `lir.check` built, keeping for each owned and stack value whether it
 is live or consumed at each point, and for each fresh value whether its
 uniqueness evidence holds. A function with no `(PTR (ADDRSPACE 1))` value and no
-ownership form costs one walk. The rules, each with its diagnostic
+ownership form costs one walk; a call whose result is `(PTR (ADDRSPACE 1))`
+defines such a value, so a function whose only managed value is a call's
+result is verified. The rules, each with its diagnostic
 (`FILE:LINE:COL: error: ownership rule N: ..` at the form at fault):
 
 1. **Linearity.** An owned value is consumed exactly once on every path
-   from its definition to a `ret` or a tail call. The consuming uses are
+   from its definition to a `ret` or a tail call. A tail call's result is
+   the function's result, handed to the caller as `ret`'s operand is: it is
+   not a value of the frame, and nothing in the frame consumes it. The
+   consuming uses are
    `destroy-value`, an `owned` argument position of a call, `ret`, `store
    init` and `store assign`, and being the incoming value of a `phi` (the
    edge consumes it). A second consume on one path is `ownership rule 1:
