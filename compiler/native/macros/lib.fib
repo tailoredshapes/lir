@@ -20,6 +20,7 @@
 (DECLARE lir.sexp.at PTR (PTR PTR))
 (DECLARE lir.sexp.symbol PTR (PTR))
 (DECLARE lir.sexp.string PTR (PTR))
+(DECLARE lir.sexp.string-bytes PTR (PTR I64))
 (DECLARE lir.sexp.integer PTR (I64))
 (DECLARE lir.sexp.float PTR (DOUBLE))
 (DECLARE lir.sexp.float-text PTR (PTR))
@@ -91,6 +92,11 @@
 
 (DEFINE (lir.sexp.symbol PTR) ((PTR cstr)) (BLOCK entry (RET (CALL (GLOBAL lir.sexp.text-new) (I64 1) cstr (CALL (GLOBAL strlen) cstr)))))
 (DEFINE (lir.sexp.string PTR) ((PTR cstr)) (BLOCK entry (RET (CALL (GLOBAL lir.sexp.text-new) (I64 4) cstr (CALL (GLOBAL strlen) cstr)))))
+;; a string of the n bytes at p, any bytes (a NUL among them), copied with a NUL after them; null for n < 0
+(DEFINE (lir.sexp.string-bytes PTR) ((PTR p) (I64 n))
+  (BLOCK entry (BR (ICMP SLT n (I64 0)) none some))
+  (BLOCK none (RET (PTR NULL)))
+  (BLOCK some (RET (CALL (GLOBAL lir.sexp.text-new) (I64 4) p n))))
 (DEFINE (lir.sexp.integer PTR) ((I64 v))
   (BLOCK entry
     (LET ((s (CALL (GLOBAL lir.sexp.new) (I64 2) (I64 56))))

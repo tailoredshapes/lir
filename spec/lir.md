@@ -492,6 +492,7 @@ stream's functions of §4.8 are the only names that are):
 | `(lir.sexp.start s) : i64`, `(lir.sexp.end s) : i64` | the span of any object: the byte offsets of its first character and of the byte after its last, 0 and 0 for a made one |
 | `(lir.sexp.at made orig) : ptr` | `made` given `orig`'s position and span (line, column, file, start, end); `made`. A macro that rebuilds a form (a definition without a marker) keeps where it was written, and the parser's errors in the copy are reported there (`cases/lir/macros/at.lir`, `reject-at-position.lir`) |
 | `(lir.sexp.symbol cstr) : ptr`, `(lir.sexp.string cstr) : ptr` | a symbol or a string of a NUL-terminated text (`(STRING "DEFINE")`), copied |
+| `(lir.sexp.string-bytes p n) : ptr` | a string of the `n` bytes at `p`, any bytes, a NUL among them included, copied with a NUL after them (null for `n < 0`): a string a NUL-terminated text cannot give, made without a write into an object (`cases/lir/macros/string-bytes.lir`) |
 | `(lir.sexp.integer v) : ptr`, `(lir.sexp.float v) : ptr` | an integer of an `i64`, a float of a `double` |
 | `(lir.sexp.float-text cstr) : ptr` | a float of a decimal text (`strtod`, rounded once): the way a reader macro makes a float from digits it read, since a symbol's text is never read as a number for it (§4.8) |
 | `(lir.sexp.list bracket) : ptr` | an empty list with that bracket |

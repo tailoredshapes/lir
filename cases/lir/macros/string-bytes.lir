@@ -1,0 +1,36 @@
+;; expect: accept
+;; out: 97 0 98 0
+;; out: 3 1 1
+;; spec/lir.md 4.6: (lir.sexp.string-bytes p n) is a string of the n bytes at p, copied, a NUL among them included, with a NUL after
+;; them; (lir.sexp.string p) copies up to the first NUL. abc is (STRING S) of the string of the first three bytes of a\0bc: a, NUL, b,
+;; then the NUL after them (line 1). Line 2: the count of that string (3), of lir.sexp.string of the same bytes (1, up to the NUL), and
+;; whether a negative count gives null (1).
+(DECLARE printf I32 (PTR ...))
+(DEFINE-MACRO lit64 (v)
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l v)
+      (RET l))))
+(DEFINE-MACRO abc ()
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "STRING")))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.string-bytes) (STRING "a\0bc") (I64 3)))
+      (RET l))))
+(DEFINE-MACRO counts ()
+  (BLOCK entry
+    (LET ((sb (CALL (GLOBAL lir.sexp.string-bytes) (STRING "a\0bc") (I64 3)))
+          (sc (CALL (GLOBAL lir.sexp.string) (STRING "a\0bc")))
+          (neg (CALL (GLOBAL lir.sexp.string-bytes) (STRING "a\0bc") (I64 -1)))
+          (v (ADD (MUL (CALL (GLOBAL lir.sexp.len) sb) (I64 100))
+                  (ADD (MUL (CALL (GLOBAL lir.sexp.len) sc) (I64 10)) (ZEXT I64 (ICMP EQ neg (PTR NULL)))))))
+      (RET (CALL (GLOBAL lir.macro.lit64) (CALL (GLOBAL lir.sexp.integer) v))))))
+(DEFINE (byte I32) ((PTR p) (I64 i)) (BLOCK entry (RET (ZEXT I32 (LOAD I8 (GETELEMENTPTR I8 p i))))))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (LET ((p (abc)) (c (counts)))
+      (CALL (GLOBAL printf) (STRING "%d %d %d %d\n") (CALL (GLOBAL byte) p (I64 0)) (CALL (GLOBAL byte) p (I64 1)) (CALL (GLOBAL byte) p (I64 2))
+        (CALL (GLOBAL byte) p (I64 3)))
+      (CALL (GLOBAL printf) (STRING "%lld %lld %lld\n") (SDIV c (I64 100)) (SREM (SDIV c (I64 10)) (I64 10)) (SREM c (I64 10)))
+      (RET (I32 0)))))
