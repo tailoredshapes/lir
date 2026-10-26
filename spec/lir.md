@@ -479,8 +479,8 @@ form in one); line and column 0 and a null file for an object a macro made. The 
 offset in its file of its first character and of the byte after its last, counted from 0 (a list ends after its closing bracket, a
 string after its closing quote, whatever its escapes; `cases/lir/macros/span.lir`); a form a reader macro returned spans the text the
 run consumed (§4.8). A form no text made, an object a macro made, has no span: start and end 0, and it gets none when the macro
-returns (the expander gives it the use's position, not the use's span), unless `lir.sexp.at` gave it one; a form a macro passed
-through keeps its span. Spans are offsets
+returns (the expander gives it the use's position, not the use's span), unless `lir.sexp.at` or `lir.sexp.at-position` gave it one; a
+form a macro passed through keeps its span. Spans are offsets
 below 2³²; the reader keeps one word per form for them. Going back, an integer prints in decimal, a float as the
 shortest decimal that reads back to it or `inf`, `-inf`, `nan`. The layout is the contract: a macro may read the fields with
 `getelementptr`, but the functions below are the way, and they are declared in every macro's body without a `declare` (they and the
@@ -491,6 +491,7 @@ stream's functions of §4.8 are the only names that are):
 | `(lir.sexp.tag s) : i64`, `(lir.sexp.line s) : i64`, `(lir.sexp.column s) : i64`, `(lir.sexp.file s) : ptr` | the tag and the position of any object |
 | `(lir.sexp.start s) : i64`, `(lir.sexp.end s) : i64` | the span of any object: the byte offsets of its first character and of the byte after its last, 0 and 0 for a made one |
 | `(lir.sexp.at made orig) : ptr` | `made` given `orig`'s position and span (line, column, file, start, end); `made`. A macro that rebuilds a form (a definition without a marker) keeps where it was written, and the parser's errors in the copy are reported there (`cases/lir/macros/at.lir`, `reject-at-position.lir`) |
+| `(lir.sexp.at-position made line column start end) : ptr` | `made` given the position `line:column` and the span `start..end` by value, its file kept (a made form's is null; `lir.sexp.at` gives it another's); `made`. A form made where no object stands gets the place it has in the text: a reader macro that reads `7/2` as three forms puts each at its own column and bytes, and a prefix reader macro spans its head over the prefix character alone (`cases/lir/readers/prefix-span.lir`); the parser's errors in it are reported there (`cases/lir/macros/reject-at-position-value.lir`) |
 | `(lir.sexp.symbol cstr) : ptr`, `(lir.sexp.string cstr) : ptr` | a symbol or a string of a NUL-terminated text (`(STRING "DEFINE")`), copied |
 | `(lir.sexp.string-bytes p n) : ptr` | a string of the `n` bytes at `p`, any bytes, a NUL among them included, copied with a NUL after them (null for `n < 0`): a string a NUL-terminated text cannot give, made without a write into an object (`cases/lir/macros/string-bytes.lir`) |
 | `(lir.sexp.integer v) : ptr`, `(lir.sexp.float v) : ptr` | an integer of an `i64`, a float of a `double` |
@@ -550,8 +551,10 @@ above), so a whole program's files reach one macro: a wrapper that arms the macr
 macro's result is reported in the module's file, at the line and column the form carries.
 
 A macro that returns null without `fail` is `macro NAME returned no form`; one that returns an object that is not one of the kinds, a
-symbol whose text is not UTF-8 (a symbol is the parser's atom; a string is any bytes), or a list deeper than 512, is `macro NAME returned
-..` (`cases/lir/macros/reject-symbol-not-utf8.lir`). The objects live until the module is parsed and are never freed before that; a
+symbol whose text is not UTF-8 (a symbol is the parser's atom; a string is any bytes), an object at no place a text has (a line and a
+column from 1, both 0 for none; a span whose start is at most its end, below 2³², both 0 for none: what `lir.sexp.at-position` could
+otherwise set), or a list deeper than 512, is `macro NAME returned ..` (`cases/lir/macros/reject-symbol-not-utf8.lir`,
+`reject-at-position-span.lir`). The objects live until the module is parsed and are never freed before that; a
 macro that traps ends lair as it would a program. The functions are implemented as an lIR module of lair's (`compiler/native/macros/lib.fib`),
 compiled once into the macro session of a module that defines a macro; a module that defines none makes no session.
 
@@ -709,7 +712,9 @@ digits it read makes one with `lir.sexp.float-text` (§4.6). The form a macro re
 character (the `'` of `'x`, the `#` of `#(..)`); a form it read with `lir.read.form` keeps its own position
 (`cases/lir/readers/positions.lir`). Its span is the text the run consumed, from the macro character (the `#` of a dispatch macro, the
 atom's first for the token reader) to where the run left the stream, and so is that of every form in it the macro made (the `quote` of
-`(quote x)`); a form it read with `lir.read.form`, and the token reader's atom, keep their own (`cases/lir/readers/span.lir`). A macro that returns null without a failure read **no form**: the reader goes on as if nothing
+`(quote x)`) unless the macro gave it a place (`lir.sexp.at`, `lir.sexp.at-position`: the `quote` over the `'` alone,
+`cases/lir/readers/prefix-span.lir`); a form it read with `lir.read.form`, and the token reader's atom, keep their own
+(`cases/lir/readers/span.lir`). A macro that returns null without a failure read **no form**: the reader goes on as if nothing
 stood there, inside a list or at the top level, which is how `#_` discards the next form (`cases/lir/readers/discard.lir`). A failure
 recorded with `lir.read.fail` is the module's error, at the position the macro gave or at the character; an error in a form the macro
 read through `lir.read.form` (a lexical error, an unclosed list, a nested macro's failure) is the module's error where it is, whatever
@@ -741,6 +746,7 @@ every macro's body:
 | `(lir.read.peek-at s n) : i64` | the byte `n` bytes from the stream (`n < 0`: behind it), -1 outside the text; nothing is consumed: a macro that looks further than the next byte asks for it, and no macro reads the struct's words (`cases/lir/readers/peek-at.lir`) |
 | `(lir.read.next s) : i64` | that byte, consumed: a newline starts the next line at column 1, a UTF-8 continuation byte leaves the column, any other byte advances it |
 | `(lir.read.position s) : i64` | the position of the stream, `line << 32 \| column`, what `lir.read.fail` takes |
+| `(lir.read.offset s) : i64` | the byte offset of the stream in its text, what a span is made of (`lir.sexp.at-position`) |
 | `(lir.read.skip s) : i64` | whitespace, commas and comments (§1 and the classes, the reader's own definition) consumed; the byte after them, -1 at the end |
 | `(lir.read.form s) : ptr` | the next form of the text, read through the readtable, discards passed over: what a `[` macro calls until it sees `]`. Null when it cannot be read (the error is then the module's, above, and `lir.read.failed` says so), and null with nothing recorded when a discard stood before a closer or the end of the text (`[1 #_2]`: the closer is left for the macro to look at, `cases/lir/readers/discard-closer.lir`) |
 | `(lir.read.failed s) : i1` | whether a failure is recorded on the stream: the macro's own (`lir.read.fail`) or a form's that `lir.read.form` could not read; a macro that got null tells no form from a failure by it |

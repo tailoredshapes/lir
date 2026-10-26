@@ -11,6 +11,7 @@
 (DECLARE lir.read.peek-at I64 (PTR I64))
 (DECLARE lir.read.next I64 (PTR))
 (DECLARE lir.read.position I64 (PTR))
+(DECLARE lir.read.offset I64 (PTR))
 (DECLARE lir.read.skip I64 (PTR))
 (DECLARE lir.read.form PTR (PTR))
 (DECLARE lir.read.fail PTR (PTR I64 PTR))
@@ -66,6 +67,9 @@
   (BLOCK entry
     (RET (OR (SHL (LOAD I64 (GETELEMENTPTR (STRUCT lir.read.stream) s (I64 0) (I32 3))) (I64 32))
              (LOAD I64 (GETELEMENTPTR (STRUCT lir.read.stream) s (I64 0) (I32 4)))))))
+
+;; the byte offset of the stream in its text, what a span is made of (spec/lir.md 4.8)
+(DEFINE (lir.read.offset I64) ((PTR s)) (BLOCK entry (RET (LOAD I64 (GETELEMENTPTR (STRUCT lir.read.stream) s (I64 0) (I32 2))))))
 
 ;; the byte n bytes from the cursor (n < 0: behind it), -1 outside the text; nothing is consumed (spec/lir.md 4.8)
 (DEFINE (lir.read.peek-at I64) ((PTR s) (I64 n))

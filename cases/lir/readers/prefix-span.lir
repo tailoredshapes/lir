@@ -1,0 +1,45 @@
+;; expect: accept
+;; out: 44 5 3106 3107 1
+;; spec/lir.md 4.6 and 4.8: (lir.sexp.at-position made line column start end) gives a made form a position and a span by value, so a
+;; prefix reader macro can give its head the span of the prefix character alone, where the forms a run made span all it consumed. The
+;; reader macro of ' makes (probe HEAD K x): HEAD a made symbol quote at the ' itself (the stream is after it: its column less one, from
+;; lir.read.position, and its byte offset less one to its offset, from lir.read.offset), K whether at-position returned the made form
+;; and kept its file (null: a made form has none until lir.sexp.at gives it one). probe calls show with HEAD's line, column, start and
+;; end and K: the ' on line 44 at column 5, bytes 3106 to 3107, and 1.
+(DECLARE printf I32 (PTR ...))
+(DEFINE-MACRO lit64 (v)
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l v)
+      (RET l))))
+(DEFINE-MACRO probe (h k x)
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))) (g (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.sexp.symbol) (STRING "GLOBAL")))
+      (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.sexp.symbol) (STRING "show")))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "CALL")))
+      (CALL (GLOBAL lir.sexp.push) l g)
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.macro.lit64) (CALL (GLOBAL lir.sexp.integer) (CALL (GLOBAL lir.sexp.line) h))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.macro.lit64) (CALL (GLOBAL lir.sexp.integer) (CALL (GLOBAL lir.sexp.column) h))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.macro.lit64) (CALL (GLOBAL lir.sexp.integer) (CALL (GLOBAL lir.sexp.start) h))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.macro.lit64) (CALL (GLOBAL lir.sexp.integer) (CALL (GLOBAL lir.sexp.end) h))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.macro.lit64) k))
+      (RET l))))
+(DEFINE-READER-MACRO "'" (s)
+  (BLOCK entry
+    (LET ((p (CALL (GLOBAL lir.read.position) s)) (off (CALL (GLOBAL lir.read.offset) s)) (made (CALL (GLOBAL lir.sexp.symbol) (STRING "quote")))
+          (h (CALL (GLOBAL lir.sexp.at-position) made (LSHR p (I64 32)) (SUB (AND p (I64 4294967295)) (I64 1)) (SUB off (I64 1)) off))
+          (k (ZEXT I64 (AND (ICMP EQ h made) (ICMP EQ (CALL (GLOBAL lir.sexp.file) h) (PTR NULL)))))
+          (l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "probe")))
+      (CALL (GLOBAL lir.sexp.push) l h)
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.integer) k))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.read.form) s))
+      (RET l))))
+(DEFINE (show VOID) ((I64 line) (I64 col) (I64 start) (I64 end) (I64 k))
+  (BLOCK entry (CALL (GLOBAL printf) (STRING "%lld %lld %lld %lld %lld\n") line col start end k) (RET)))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    'abc
+    (RET (I32 0))))

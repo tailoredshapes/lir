@@ -1,0 +1,12 @@
+;; expect: reject
+;; error: 3:7: error: unknown instruction oops
+;; spec/lir.md 4.6: a form a macro made with (lir.sexp.at-position made line column start end) is where the macro put it, a position no
+;; object has (here line 3, column 7, inside this comment), and the parser's error in it is reported there, not at the use (line 12).
+(DEFINE-MACRO misplaced ()
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.at-position) (CALL (GLOBAL lir.sexp.symbol) (STRING "oops")) (I64 3) (I64 7) (I64 200) (I64 204)))
+      (RET (CALL (GLOBAL lir.sexp.at-position) l (I64 3) (I64 7) (I64 199) (I64 205))))))
+(DECLARE printf I32 (PTR ...))
+(DEFINE (main I32) ()
+  (BLOCK entry (misplaced) (RET (I32 0))))

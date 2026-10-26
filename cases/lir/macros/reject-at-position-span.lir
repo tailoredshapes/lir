@@ -1,0 +1,13 @@
+;; expect: reject
+;; error: 13:21: error: macro backwards returned an object with the span 9..4
+;; spec/lir.md 4.6: lir.sexp.at-position takes any words, and a place no text could give is refused when the macro returns: a line and
+;; a column from 1 (both 0: none) and a span whose start is at most its end, below 2^32 (both 0: none). A span from 9 back to 4 is
+;; `macro NAME returned an object with the span 9..4`, at the use.
+(DEFINE-MACRO backwards ()
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I32")))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.integer) (I64 0)))
+      (RET (CALL (GLOBAL lir.sexp.at-position) l (I64 1) (I64 1) (I64 9) (I64 4))))))
+(DEFINE (main I32) ()
+  (BLOCK entry (RET (backwards))))
