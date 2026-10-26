@@ -1,0 +1,10 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: a runtime's view of a table: the struct of its rows, the table declared (ARRAY 0 T) as the program defines it, and
+;; functions that read a member's row by its ordinal (table-shared.lir imports it, and table-vec.lir and table-map.lir carry the rows).
+(DEFSTRUCT rec (PTR I64))
+(DECLARE-GLOBAL recs (ARRAY 0 (STRUCT rec)))
+(DEFINE (rec-name PTR) ((I64 id))
+  (BLOCK entry (RET (LOAD PTR (GETELEMENTPTR (STRUCT rec) (GLOBAL recs) id (I32 0))))))
+(DEFINE (rec-size I64) ((I64 id))
+  (BLOCK entry (RET (LOAD I64 (GETELEMENTPTR (STRUCT rec) (GLOBAL recs) id (I32 1))))))

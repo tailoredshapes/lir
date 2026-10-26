@@ -1,0 +1,49 @@
+;; compiler/tests/lir/unit-ordinal.fib: the program's ordinals and rows (spec/lir.md 4.7.1) in the front half: the printer writes each as it
+;; was read (print, read, print: the same text, a member's bytes escaped), the checker refuses an ordinal or a row in a module the loader did
+;; not load (a tree, or lir2c's and lir2js's own reading), and `check-loaded`, the loader's check, checks a row as a constant of its type.
+;; Build: fibc build compiler/tests/lir/unit-ordinal.fib -I compiler -I lib -o OUT
+(ns tests.lir.unit-ordinal (:use fib.test.unit lir.diag lir.types lir.ast)
+  (:require [fib.test.run :as test-runner] [lir.parse :as parse] [lir.check :as check] [lir.print :as print]))
+
+(def source: str "(DECLARE-GLOBAL t (ARRAY 0 I64))
+(ROW t ids \"x\" I64 (I64 8))
+(ROW t ids \"\\xff\" I64 (I64 9))
+(DEFINE (main I32) () (BLOCK entry (RET (ORDINAL I32 ids \"x\"))))")
+
+(def mistyped: str "(ROW t ids \"x\" I64 (I32 8))
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))")
+
+(defun printed (src: str) -> str
+  (match (parse/parse-source src) ((Ok m) (print/print-module m)) ((Err d) (str "error: " (diag-str d)))))
+
+(defun has? (hay: str needle: str) -> bool (some? (str-find hay needle 0)))
+
+;; Every message of the checker (`loaded`: the loader's check) on `src`, joined; "ok" when it accepts.
+(defun checked (src: str loaded: bool) -> str
+  (match (parse/parse-source src)
+    ((Err d) (str "parse: " (diag-str d)))
+    ((Ok m) (match (if loaded (check/check-loaded m) (check/check m))
+              ((Ok _) "ok")
+              ((Err ds) (str-join (mapv (fn (d: Diagnostic) (str (diag-str d) "\n")) ds)))))))
+
+(defun unit-steps () -> (Vec StepRun)
+  (let ((cs (new-rec)) (once (printed source)) (twice (printed (printed source)))
+        (tree (checked source false)) (bad (checked mistyped true)))
+    (do
+      (is cs (and (has? once "(ROW t ids \"x\" I64 (I64 8))") (has? once "(ROW t ids \"\\xff\" I64 (I64 9))")
+                  (has? once "(ORDINAL I32 ids \"x\")")) "an ordinal and a row print as written, a member's bytes escaped")
+      (is cs (= once twice) "print, read, print gives the same text")
+      (is cs (and (has? tree "2:1: error: row \"x\" of @t is not joined: lair joins rows when it loads a program")
+                  (has? tree "4:41: error: ordinal ids \"x\" is not numbered: lair numbers ordinals when it loads a program"))
+          "the checker refuses a row and an ordinal the loader did not join and number")
+      (is cs (has? bad "1:20: error: row \"x\" of @t has type i32, expected i64") "the loader's check types a row's value")
+      (is cs (= (checked "(ROW t ids \"x\" I64 (I64 8))\n(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))" true) "ok")
+          "the loader's check accepts a well-typed row")
+      (rec-steps cs))))
+
+(defun tests () -> Suite
+  (unit-suite "lir/unit-ordinal" [(test-case "checks" unit-steps "compiler/tests/lir/unit-ordinal.fib")]))
+
+(defun main () -> i64
+  (test-runner/run-main-with [(tests)]
+    (into ["--isolate" "fork" "--timeout" "300"] (vec (args)))))

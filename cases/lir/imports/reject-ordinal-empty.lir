@@ -1,0 +1,4 @@
+;; expect: reject
+;; error: 4:58: error: ordinal: the name must not be empty
+;; spec/lir.md 4.7.1: a member is a non-empty string.
+(DEFINE (main I32) () (BLOCK entry (RET (ORDINAL I32 ids ""))))

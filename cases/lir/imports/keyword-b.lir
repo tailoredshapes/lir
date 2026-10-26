@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: the second keyword module of keyword-shared.lir: :bar again, with the same row as keyword-a.lir's, and :baz.
+(ROW kw.names keywords "bar" PTR (STRING ":bar"))
+(ROW kw.names keywords "baz" PTR (STRING ":baz"))
+(DEFINE (kw-bar I64) () (BLOCK entry (RET (ORDINAL I64 keywords "bar"))))

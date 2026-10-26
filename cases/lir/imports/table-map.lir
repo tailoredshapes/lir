@@ -1,0 +1,7 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: a module that defines the type "map" and carries the row of "vec" too, the same text as table-vec.lir's: one row.
+(IMPORT "table-rt.lir")
+(ROW recs types "map" (STRUCT rec) ((STRUCT rec) (STRING "map") (I64 48)))
+(ROW recs types "vec" (STRUCT rec) ((STRUCT rec) (STRING "vec") (I64 24)))
+(DEFINE (map-id I32) () (BLOCK entry (RET (ORDINAL I32 types "map"))))

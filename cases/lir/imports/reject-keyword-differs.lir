@@ -1,0 +1,8 @@
+;; expect: reject
+;; error: 8:1: error: row "foo" of @kw.names differs from its row in cases/lir/imports/keyword-a.lir
+;; spec/lir.md 4.7.1: a member has one row in a table: this module's row of :foo in kw.names is not keyword-a.lir's (the name without
+;; its colon), and is refused at the second row. The import it differs from is loaded first, so the error is in this module.
+(IMPORT "keyword-a.lir")
+(DECLARE-GLOBAL kw.names (ARRAY 0 PTR))
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))
+(ROW kw.names keywords "foo" PTR (STRING "foo"))

@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 6:51: error: ordinal 2 of flags "c" does not fit i1
+;; spec/lir.md 4.7.1: an ordinal's number fits its type as a literal of it does: the third member of flags is 2, which no i1 holds.
+(DEFINE (a I1) () (BLOCK entry (RET (ORDINAL I1 flags "a"))))
+(DEFINE (b I1) () (BLOCK entry (RET (ORDINAL I1 flags "b"))))
+(DEFINE (main I32) () (BLOCK entry (RET (ZEXT I32 (ORDINAL I1 flags "c")))))

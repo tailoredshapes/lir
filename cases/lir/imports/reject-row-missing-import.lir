@@ -1,0 +1,7 @@
+;; expect: reject
+;; error: 6:1: error: import: cases/lir/imports/row-gap.lir:4:41: error: @sizes has no row for "w" of types
+;; spec/lir.md 4.7.1: the member without a row was first met in an imported module: the error is at the import of the named module that
+;; loaded it, with the file and the position in it, as an error in an import is.
+(IMPORT "row-a.lir")
+(IMPORT "row-gap.lir")
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))

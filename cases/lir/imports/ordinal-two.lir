@@ -1,0 +1,7 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: the second module ordinal-dense.lir imports; it imports ordinal-three.lir, which is loaded before it, and names "r"
+;; and "q" of the set ids.
+(IMPORT "ordinal-three.lir")
+(DEFINE (two-r I64) () (BLOCK entry (RET (ORDINAL I64 ids "r"))))
+(DEFINE (two-q I64) () (BLOCK entry (RET (ORDINAL I64 ids "q"))))

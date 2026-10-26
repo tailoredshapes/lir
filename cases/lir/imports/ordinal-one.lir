@@ -1,0 +1,5 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: the first module ordinal-dense.lir loads: it names "p" and "q" of the set ids.
+(DEFINE (one-p I64) () (BLOCK entry (RET (ORDINAL I64 ids "p"))))
+(DEFINE (one-q I64) () (BLOCK entry (RET (ORDINAL I64 ids "q"))))

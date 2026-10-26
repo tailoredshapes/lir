@@ -1,0 +1,18 @@
+;; expect: accept
+;; out: 0 1 3 2 4 | 0 1 3 1 2 4
+;; spec/lir.md 4.7.1: four modules load in the order ordinal-one.lir, ordinal-three.lir, ordinal-two.lir (which imports ordinal-three.lir),
+;; this one; the members of ids are numbered densely in that order: p 0, q 1 (one), s 2 (three), r 3 (two: its q is one's), t 4. The
+;; ordinal of "t" is written before the imports and is still numbered last: the named module is numbered when it is admitted, after them.
+;; (ordinal-three.lir is imported again for three-s: an import is not transitive, and the module is loaded once.)
+(DEFINE (main-t I64) () (BLOCK entry (RET (ORDINAL I64 ids "t"))))
+(IMPORT "ordinal-one.lir")
+(IMPORT "ordinal-two.lir")
+(IMPORT "ordinal-three.lir")
+(DECLARE printf I32 (PTR ...))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%lld %lld %lld %lld %lld | ")
+          (ORDINAL I64 ids "p") (ORDINAL I64 ids "q") (ORDINAL I64 ids "r") (ORDINAL I64 ids "s") (ORDINAL I64 ids "t"))
+    (CALL (GLOBAL printf) (STRING "%lld %lld %lld %lld %lld %lld\n")
+          (CALL (GLOBAL one-p)) (CALL (GLOBAL one-q)) (CALL (GLOBAL two-r)) (CALL (GLOBAL two-q)) (CALL (GLOBAL three-s)) (CALL (GLOBAL main-t)))
+    (RET (I32 0))))

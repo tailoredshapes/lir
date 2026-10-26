@@ -1,0 +1,4 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: a module that names the member "x" of the set ids (ordinal-shared.lir imports it, and ordinal-b.lir, which names it too).
+(DEFINE (a-x I64) () (BLOCK entry (RET (ORDINAL I64 ids "x"))))

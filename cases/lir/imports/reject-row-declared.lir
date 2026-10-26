@@ -1,0 +1,7 @@
+;; expect: reject
+;; error: 6:1: error: @sizes is declared as [0 x i32] in cases/lir/imports/reject-row-declared.lir
+;; spec/lir.md 4.7.1: a module reads a table through a declaration of type (ARRAY 0 T), T its rows': this one declares it with another, and
+;; the row that makes the table meets the declaration as a definition of another type.
+(DECLARE-GLOBAL sizes (ARRAY 0 I32))
+(ROW sizes types "x" I64 (I64 8))
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))

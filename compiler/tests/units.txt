@@ -2,6 +2,7 @@
 # line.
 compiler/tests/lir/unit-ast.fib
 compiler/tests/lir/unit-facts.fib
+compiler/tests/lir/unit-ordinal.fib
 compiler/tests/lir/unit-lit.fib
 compiler/tests/lir/unit-types.fib
 compiler/tests/lir/k1-core.fib

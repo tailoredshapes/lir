@@ -1,0 +1,4 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: a module that names the member "w" of the set types and carries no row for it (reject-row-missing-import.lir).
+(DEFINE (w-id I64) () (BLOCK entry (RET (ORDINAL I64 types "w"))))

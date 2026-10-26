@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: a module that defines the type "vec": its row in the table recs, and its ordinal in the set types.
+(IMPORT "table-rt.lir")
+(ROW recs types "vec" (STRUCT rec) ((STRUCT rec) (STRING "vec") (I64 24)))
+(DEFINE (vec-id I32) () (BLOCK entry (RET (ORDINAL I32 types "vec"))))

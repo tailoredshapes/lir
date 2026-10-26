@@ -1,0 +1,4 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: a second module with a row of "x" in the table sizes, of another value than row-a.lir's (reject-row-differs.lir).
+(ROW sizes types "x" I64 (I64 16))

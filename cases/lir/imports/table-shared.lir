@@ -1,0 +1,15 @@
+;; expect: accept
+;; out: 0 1 | vec 24 map 48
+;; spec/lir.md 4.7.1: table-vec.lir and table-map.lir each carry the row of "vec" in the table recs, the same row, and the program has it
+;; once: recs is one constant of 2 rows in ordinal order ("vec" 0, met first in table-vec.lir; "map" 1), which table-rt.lir's functions
+;; read by ordinal.
+(IMPORT "table-rt.lir")
+(IMPORT "table-vec.lir")
+(IMPORT "table-map.lir")
+(DECLARE printf I32 (PTR ...))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (LET ((v (ZEXT I64 (CALL (GLOBAL vec-id)))) (m (ZEXT I64 (CALL (GLOBAL map-id)))))
+      (CALL (GLOBAL printf) (STRING "%lld %lld | %s %lld %s %lld\n") v m
+            (CALL (GLOBAL rec-name) v) (CALL (GLOBAL rec-size) v) (CALL (GLOBAL rec-name) m) (CALL (GLOBAL rec-size) m)))
+    (RET (I32 0))))

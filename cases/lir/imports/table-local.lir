@@ -1,0 +1,16 @@
+;; expect: accept
+;; out: green red blue | 1
+;; spec/lir.md 4.7.1: a module with no imports is a program of one module: its ordinals are numbered (red 0, green 1, blue 2) and its rows
+;; joined into the table names, written after the rows of red and blue and the ordinal of green: the table is in ordinal order.
+(DECLARE printf I32 (PTR ...))
+(DECLARE-GLOBAL names (ARRAY 0 PTR))
+(ROW names colours "red" PTR (STRING "red"))
+(DEFINE (green I64) () (BLOCK entry (RET (ORDINAL I64 colours "green"))))
+(ROW names colours "blue" PTR (STRING "blue"))
+(ROW names colours "green" PTR (STRING "green"))
+(DEFINE (name PTR) ((I64 k)) (BLOCK entry (RET (LOAD PTR (GETELEMENTPTR PTR (GLOBAL names) k)))))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%s %s %s | %lld\n") (CALL (GLOBAL name) (CALL (GLOBAL green))) (CALL (GLOBAL name) (I64 0))
+          (CALL (GLOBAL name) (I64 2)) (CALL (GLOBAL green)))
+    (RET (I32 0))))

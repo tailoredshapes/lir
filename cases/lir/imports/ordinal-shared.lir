@@ -1,0 +1,11 @@
+;; expect: accept
+;; out: 0 0 1 2
+;; spec/lir.md 4.7.1: ordinal-a.lir and ordinal-b.lir both name "x" of the set ids and get one number, 0 (ordinal-a.lir is loaded first);
+;; ordinal-b.lir's "y" is 1 and this module's "z" is 2: the program numbers a set once, densely, in load order.
+(IMPORT "ordinal-a.lir")
+(IMPORT "ordinal-b.lir")
+(DECLARE printf I32 (PTR ...))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%lld %lld %lld %lld\n") (CALL (GLOBAL a-x)) (CALL (GLOBAL b-x)) (CALL (GLOBAL b-y)) (ORDINAL I64 ids "z"))
+    (RET (I32 0))))

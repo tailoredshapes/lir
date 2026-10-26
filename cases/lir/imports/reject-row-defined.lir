@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 5:1: error: @sizes is also defined in cases/lir/imports/row-a.lir
+;; spec/lir.md 4.7.1: a table is a global of the program, defined by its rows: a global of its name is a second definition.
+(IMPORT "row-a.lir")
+(GLOBAL sizes I64 (I64 0))
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))

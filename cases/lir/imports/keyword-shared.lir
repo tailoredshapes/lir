@@ -1,0 +1,18 @@
+;; expect: accept
+;; out: :foo :bar :baz | 1 0 | 1 1
+;; spec/lir.md 4.7.1: keyword-a.lir and keyword-b.lir number the set keywords as one program (foo 0, bar 1, baz 2) and their rows of :bar
+;; are one row: kw.names holds the three names in ordinal order. kw-foo? of keyword-a.lir dispatches on the program's numbers, and
+;; keyword-b.lir's :bar is this module's.
+(IMPORT "keyword-a.lir")
+(IMPORT "keyword-b.lir")
+(DECLARE-GLOBAL kw.names (ARRAY 0 PTR))
+(DECLARE printf I32 (PTR ...))
+(DEFINE (name PTR) ((I64 k)) (BLOCK entry (RET (LOAD PTR (GETELEMENTPTR PTR (GLOBAL kw.names) k)))))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%s %s %s | %lld %lld | %lld %lld\n")
+          (CALL (GLOBAL name) (ORDINAL I64 keywords "foo")) (CALL (GLOBAL name) (ORDINAL I64 keywords "bar"))
+          (CALL (GLOBAL name) (ORDINAL I64 keywords "baz"))
+          (CALL (GLOBAL kw-foo?) (ORDINAL I64 keywords "foo")) (CALL (GLOBAL kw-foo?) (ORDINAL I64 keywords "baz"))
+          (CALL (GLOBAL kw-bar)) (ORDINAL I64 keywords "bar"))
+    (RET (I32 0))))

@@ -61,11 +61,11 @@ one() {
   if [ $ns -eq 124 ]; then echo "skip $name: the native run timed out"; return; fi
   sed -i '/^lir\.own: /d' "$d/n.err"   # the ownership verifier's report-mode summary (spec/lir.md 6.14.5) is the checker's line, printed by `lairf run` before the program runs; lir2js prints it when it translates
   reject=0; grep -q '^;; expect: reject' "$f" && reject=1
-  # A file that defines or requires macros (spec/lir.md 4.6), imports (4.7) or defines reader macros (4.8): lir2js has no compile-time runtime, so it
+  # A file that defines or requires macros (spec/lir.md 4.6), imports (4.7), ordinals or rows (4.7.1) or defines reader macros (4.8): lir2js has no compile-time runtime, so it
   # reads the expanded lIR `lairf expand` prints; an expansion lairf refuses is the verdict lir2js is compared with (the backend never sees such a
   # module). A file with none goes to lir2js as it is, so that a diagnostic's position is the file's.
   # The directions in either spelling (spec/lir.md 2): the old lower-case words, the new upper-case ones.
-  if grep -qE '^\((define-macro|require-macros|import|macro-import|module-macro|include|define-reader-macro|define-dispatch-macro|define-token-reader|define-reader-class|define-reader-depth|define-reader-bom|DEFINE-MACRO|REQUIRE-MACROS|IMPORT|MACRO-IMPORT|MODULE-MACRO|INCLUDE|DEFINE-READER-MACRO|DEFINE-DISPATCH-MACRO|DEFINE-TOKEN-READER|DEFINE-READER-CLASS|DEFINE-READER-DEPTH|DEFINE-READER-BOM) ' "$f"; then
+  if grep -qE '^\((define-macro|require-macros|import|macro-import|module-macro|include|define-reader-macro|define-dispatch-macro|define-token-reader|define-reader-class|define-reader-depth|define-reader-bom|DEFINE-MACRO|REQUIRE-MACROS|IMPORT|MACRO-IMPORT|MODULE-MACRO|INCLUDE|DEFINE-READER-MACRO|DEFINE-DISPATCH-MACRO|DEFINE-TOKEN-READER|DEFINE-READER-CLASS|DEFINE-READER-DEPTH|DEFINE-READER-BOM) ' "$f" || grep -qE '^\((ROW|row) |\((ORDINAL|ordinal) ' "$f"; then
     "$LAIRF" expand "$f" > "$d/x.lir" 2> "$d/x.err"; xs=$?
     if [ $xs -ne 0 ]; then
       if [ $reject -eq 1 ] && [ $xs -eq $ns ] && cmp -s "$d/n.err" "$d/x.err"; then echo "pass $name"; else echo "differ $name: lairf expand failed with exit $xs, native $ns: $(head -c 150 "$d/x.err")"; fi

@@ -1,0 +1,7 @@
+;; expect: reject
+;; error: 7:76: error: @sizes has no row for "y" of types
+;; spec/lir.md 4.7.1: every member of a set has a row in each table of the set: "y" has none in sizes, and is refused where the program
+;; first met it.
+(IMPORT "row-a.lir")
+(DECLARE printf I32 (PTR ...))
+(DEFINE (main I32) () (BLOCK entry (CALL (GLOBAL printf) (STRING "%lld\n") (ORDINAL I64 types "y")) (RET (I32 0))))

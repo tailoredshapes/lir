@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 6:1: error: @sizes has rows of i64 in cases/lir/imports/row-a.lir: row "y" is i32
+;; spec/lir.md 4.7.1: a table's rows have one type.
+(IMPORT "row-a.lir")
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))
+(ROW sizes types "y" I32 (I32 4))

@@ -1,0 +1,4 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: the module ordinal-two.lir imports: it names "s" of the set ids.
+(DEFINE (three-s I64) () (BLOCK entry (RET (ORDINAL I64 ids "s"))))

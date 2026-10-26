@@ -1,0 +1,5 @@
+;; expect: reject
+;; error: 4:1: error: row expects (ROW TABLE SET "NAME" T value), found 4 operands
+;; spec/lir.md 4.7.1: a row has its five operands.
+(ROW sizes types "x" (I64 8))
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))

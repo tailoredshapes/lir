@@ -1,0 +1,10 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: keywords as a set: this module numbers :foo and :bar, carries their names as rows of the table kw.names, and
+;; dispatches on a keyword with a switch whose cases are ordinals (keyword-shared.lir imports it, and keyword-b.lir).
+(ROW kw.names keywords "foo" PTR (STRING ":foo"))
+(ROW kw.names keywords "bar" PTR (STRING ":bar"))
+(DEFINE (kw-foo? I64) ((I64 k))
+  (BLOCK entry (SWITCH k other ((ORDINAL I64 keywords "foo") yes)))
+  (BLOCK yes (RET (I64 1)))
+  (BLOCK other (RET (I64 0))))

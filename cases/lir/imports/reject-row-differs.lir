@@ -1,0 +1,7 @@
+;; expect: reject
+;; error: 6:1: error: import: cases/lir/imports/row-b.lir:4:1: error: row "x" of @sizes differs from its row in cases/lir/imports/row-a.lir
+;; spec/lir.md 4.7.1: two modules carry a row of "x" in the table sizes and the rows differ: the second, row-b.lir's, is refused where it
+;; is, reported at its import.
+(IMPORT "row-a.lir")
+(IMPORT "row-b.lir")
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))

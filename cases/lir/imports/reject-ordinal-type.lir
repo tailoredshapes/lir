@@ -1,0 +1,4 @@
+;; expect: reject
+;; error: 4:62: error: ordinal needs an integer type, found double
+;; spec/lir.md 4.7.1: an ordinal is an integer constant.
+(DEFINE (main I32) () (BLOCK entry (RET (FPTOSI I32 (ORDINAL DOUBLE ids "a")))))

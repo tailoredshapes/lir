@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 6:1: error: @sizes is a table of the set types in cases/lir/imports/row-a.lir: row "y" names keywords
+;; spec/lir.md 4.7.1: a table's rows name one set: its rows are by the ordinals of that set.
+(IMPORT "row-a.lir")
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))
+(ROW sizes keywords "y" I64 (I64 4))

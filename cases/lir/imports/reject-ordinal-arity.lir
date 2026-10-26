@@ -1,0 +1,4 @@
+;; expect: reject
+;; error: 4:41: error: ordinal expects (ORDINAL T SET "NAME"), found 2 operands
+;; spec/lir.md 4.7.1: an ordinal has a type, a set and a name.
+(DEFINE (main I32) () (BLOCK entry (RET (ORDINAL I32 "a"))))

@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.7.1: a module with the row of "x" in the table sizes of the set types (the reject-row-*.lir cases import it).
+(DECLARE-GLOBAL sizes (ARRAY 0 I64))
+(ROW sizes types "x" I64 (I64 8))
+(DEFINE (size-of I64) ((I64 id)) (BLOCK entry (RET (LOAD I64 (GETELEMENTPTR I64 (GLOBAL sizes) id)))))
