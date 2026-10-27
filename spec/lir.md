@@ -506,7 +506,7 @@ stream's functions of §4.8 are the only names that are):
 | `(lir.sexp.int s) : i64`, `(lir.sexp.flt s) : double` | an integer's or a float's value |
 | `(lir.sexp.is s cstr) : i1` | whether `s` is the symbol with that text |
 | `(lir.sexp.gensym cstr) : ptr` | a fresh symbol `PREFIX.N`, `N` counting up through the program: one counter per program read (the loader's, given to every module's session, ADR 0013: no global state), so the names two modules of a program make never coincide (`cases/lir/macros/gensym-program.lir`) |
-| `(lir.sexp.expand form) : ptr` | the form expanded through the module's macros as the expander would (outermost first, then the children), as an object; null when that expansion fails, and its error is then the use's (below) |
+| `(lir.sexp.expand form) : ptr` | the form expanded through the module's macros as the expander would (outermost first, then the children), as an object; a form the expansion passed through keeps its position, its file included (a form of an included file stays that file's), and a form a macro made is at the use, in the module's file, as a macro's result is; null when that expansion fails, and its error is then the use's (below) (`cases/lir/macros/expand-file.lir`) |
 | `(lir.sexp.set l i x) : ptr` | item `i` of the list `l` replaced by `x`, the dual of `nth`; `l` (out of range: nothing) |
 | `(lir.sexp.fail at message) : ptr` | the expansion fails with `macro NAME: MESSAGE` at the object `at` (null: at the use); returns null, for the macro to return |
 

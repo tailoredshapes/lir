@@ -195,13 +195,14 @@
            (recur))))))
 
 ;; `lir.sexp.expand` of the object at `a`: the form expanded through the module's macros (as `expand`, outermost first), as an object;
-;; null, and the error kept for the use, when the expansion fails.
+;; null, and the error kept for the use, when the expansion fails. A form the expansion passed through keeps the file its object named
+;; (`object-files`); a form a macro made is at the use, in the module's file.
 (defun answer-expand :private (env: Env s: Session a: i64 pos: i64) -> i64
   (match (obj/from-object a pos)
     ((Err e) (do (set! (. s pending) (some (Diagnostic pos (str "lir.sexp.expand: " e)))) 0))
     ((Ok f) (match (expand env f)
               ((Err d) (do (set! (. s pending) (some d)) 0))
-              ((Ok out) (obj/to-object out (. env cfile)))))))
+              ((Ok out) (obj/to-object-in out (. env cfile) (obj/object-files a)))))))
 
 ;; ---------------------------------------------------------------- the session
 

@@ -95,6 +95,7 @@ H=native/macros/helpers.fib
 fault ownership-not-in-interface $H '((ItOwnership _) (conj out (nth (. m items) i)))' '((ItOwnership _) out)'
 fault session-ownership-twice-accepted $H '((some other) (some (Diagnostic (. o pos) (str "ownership: " other " also has an ownership form"))))' '((some other) nil)'
 fault bare-module-not-erased lir/own/erase.fib '(nil (LModule (mapv erase-bare-item (. m items))))' '(nil m)'
+fault expand-gives-the-module-file native/macros.fib '(obj/to-object-in out (. env cfile) (obj/object-files a))' '(obj/to-object out (. env cfile))'
 wait
 
 for n in "${names[@]}"; do

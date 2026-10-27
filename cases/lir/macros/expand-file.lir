@@ -1,0 +1,55 @@
+;; expect: accept
+;; out: 1101
+;; spec/lir.md 4.6: lir.sexp.expand places a form a macro made at the use (in the module's file) and a form the expansion passed through
+;; keeps its position, its file with it. The module macro probe is given the forms of the included file expand-file-part.lir (their objects
+;; name it); it expands (wrap (i64 5)), whose macro returns (add X X) with X the argument, and (i64 7), which no macro touches, and defines
+;; probe-info: 1000 if the expansion's root is in this file (the macro made it), 100 if the argument inside it is in the included file, 10 if
+;; it is in this file (before: it was, every node of the result was given the module's file), 1 if the unchanged form is in the included file.
+(DEFINE-MACRO wrap (x)
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "ADD")))
+      (CALL (GLOBAL lir.sexp.push) l x)
+      (CALL (GLOBAL lir.sexp.push) l x)
+      (RET l))))
+;; 1 as an object when the files of the objects a and b are the same path (equal bytes up to the NUL), else 0: the macro's own strcmp.
+(DEFINE-MACRO same (a b)
+  (BLOCK entry
+    (LET ((fa (CALL (GLOBAL lir.sexp.file) a)) (fb (CALL (GLOBAL lir.sexp.file) b)))
+      (BR (OR (ICMP EQ fa (PTR NULL)) (ICMP EQ fb (PTR NULL))) no walk)))
+  (BLOCK walk
+    (LET ((i (PHI I64 (entry (I64 0)) (step i2))) (ca (LOAD I8 (GETELEMENTPTR I8 (CALL (GLOBAL lir.sexp.file) a) i)))
+          (cb (LOAD I8 (GETELEMENTPTR I8 (CALL (GLOBAL lir.sexp.file) b) i))))
+      (BR (ICMP NE ca cb) no more)))
+  (BLOCK more (BR (ICMP EQ ca (I8 0)) yes step))
+  (BLOCK step (LET ((i2 (ADD i (I64 1)))) (BR walk)))
+  (BLOCK yes (RET (CALL (GLOBAL lir.sexp.integer) (I64 1))))
+  (BLOCK no (RET (CALL (GLOBAL lir.sexp.integer) (I64 0)))))
+(DEFINE-MACRO probe (forms ...)
+  (BLOCK entry
+    (LET ((inc (CALL (GLOBAL lir.sexp.nth) forms (I64 0))) (f1 (CALL (GLOBAL lir.sexp.nth) forms (I64 1))) (f2 (CALL (GLOBAL lir.sexp.nth) forms (I64 2)))
+          (e1 (CALL (GLOBAL lir.sexp.expand) f1)) (e2 (CALL (GLOBAL lir.sexp.expand) f2)))
+      (LET ((arg (CALL (GLOBAL lir.sexp.nth) e1 (I64 1)))
+            (root-here (CALL (GLOBAL lir.macro.same) e1 inc)) (arg-there (CALL (GLOBAL lir.macro.same) arg f1))
+            (arg-here (CALL (GLOBAL lir.macro.same) arg inc)) (plain-there (CALL (GLOBAL lir.macro.same) e2 f2)))
+        (LET ((n (ADD (ADD (MUL (CALL (GLOBAL lir.sexp.int) root-here) (I64 1000)) (MUL (CALL (GLOBAL lir.sexp.int) arg-there) (I64 100)))
+                      (ADD (MUL (CALL (GLOBAL lir.sexp.int) arg-here) (I64 10)) (CALL (GLOBAL lir.sexp.int) plain-there))))
+              (out (CALL (GLOBAL lir.sexp.list) (I64 0))) (g (CALL (GLOBAL lir.sexp.list) (I64 0))) (v (CALL (GLOBAL lir.sexp.list) (I64 0))))
+          (CALL (GLOBAL lir.sexp.push) v (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+          (CALL (GLOBAL lir.sexp.push) v (CALL (GLOBAL lir.sexp.integer) n))
+          (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.sexp.symbol) (STRING "GLOBAL")))
+          (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.sexp.symbol) (STRING "probe-info")))
+          (CALL (GLOBAL lir.sexp.push) g (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+          (CALL (GLOBAL lir.sexp.push) g v)
+          (CALL (GLOBAL lir.sexp.push) out (CALL (GLOBAL lir.sexp.symbol) (STRING "BEGIN")))
+          (CALL (GLOBAL lir.sexp.push) out g)
+          (CALL (GLOBAL lir.sexp.push) out (CALL (GLOBAL lir.sexp.nth) forms (I64 3)))
+          (CALL (GLOBAL lir.sexp.push) out (CALL (GLOBAL lir.sexp.nth) forms (I64 4)))
+          (RET out))))))
+(MODULE-MACRO probe)
+(INCLUDE "expand-file-part.lir")
+(DECLARE printf I32 (PTR ...))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%lld\n") (LOAD I64 (GLOBAL probe-info)))
+    (RET (I32 0))))

@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 5:1: error: expected a top-level form
+;; spec/lir.md 4.6: the file expand-file.lir includes while its module macro is armed: a use of its macro wrap, and a form with none, both
+;; named as forms of this file by the objects the module macro is given.
+(wrap (I64 5))
+(I64 7)
