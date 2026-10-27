@@ -1,0 +1,40 @@
+;; compiler/native/macros/declares.fib: the declarations of a macro's module (spec/lir.md 4.6, 4.8): the form library's and the stream's
+;; functions, the earlier macros' functions of the session, the macro-imported modules' interfaces. They are items, made once: the library's
+;; read and parsed when the session is made (`library-declares`), a macro's made from its parameters (`macro-declare-items`), an interface
+;; kept as items by native.macros; a macro's module concatenates them before its definition.
+(ns native.macros.declares
+  (:use lir.diag lir.sexp lir.ast lir.types native.macros.types)
+  (:require [lir.parse.items :as items] [native.macros.lib :as lib] [native.macros.readlib :as readlib]))
+
+;; The library's and the stream's declarations, parsed: what every macro's module declares of them, at the positions they had when each
+;; macro's module was read from their text (the library's first, the stream's after a newline).
+(defun library-declares () -> (Result (Vec LItem) Diagnostic)
+  (try-let ((forms (read (str (lib/declares-source) "\n" (readlib/declares-source)))))
+    (loop ((i 0) (out []))
+      (if (>= i (count forms))
+          (Ok out)
+          (match (items/parse-item (nth forms i)) ((Err d) (Err d)) ((Ok it) (recur (+ i 1) (conj out it))))))))
+
+(defun newlines :private (s: str) -> i64
+  (loop ((i 0) (n 0))
+    (cond (>= i (str-len s)) n
+          (= (str-byte-at s i) 10i8) (recur (+ i 1) (+ n 1))
+          :else (recur (+ i 1) n))))
+
+;; The line the first macro's declaration had in that text: after the library's lines, a newline, the stream's lines and a newline.
+(defun macro-first-line :private () -> i64
+  (+ 3 (newlines (lib/declares-source)) (newlines (readlib/declares-source))))
+
+;; `(DECLARE lir.macro.NAME PTR (PTR..))` of every macro defined so far in the session `s`, one per line after the library's: a macro's body
+;; may call an earlier macro's function. A macro of an imported module is in that module's session: it is used, not called (spec/lir.md 4.7).
+(defun macro-declare-items (env: Env s: Session) -> (Vec LItem)
+  (let ((ms (vec (filter (fn (m: Macro) (= (. m take) (. s take))) (vals @(. env macros)))))
+        (line0 (macro-first-line)))
+    (loop ((i 0) (out []))
+      (if (>= i (count ms))
+          out
+          (let ((m (nth ms i)))
+            (recur (+ i 1)
+                   (conj out (ItDeclare (LDeclare (str "lir.macro." (. m name))
+                                                  (LFnType cc-c (some ty-ptr) (vec-fill (+ (. m fixed) (if (. m rest) 1 0)) ty-ptr) false)
+                                                  false (pos-new (+ line0 i) 1))))))))))

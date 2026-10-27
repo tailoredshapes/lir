@@ -18,9 +18,10 @@
 ;; reader macro's nested read does), started or nested by the readers' one count of runs; `pending` is the error of a nested expansion, the
 ;; use's error.
 ;; `imported`: the macro-imported modules by canonical path with their interface items; `importing`: those being compiled (a cycle);
-;; `iface`: every interface, declared in the macro bodies compiled after.
+;; `iface`: every interface, declared in the macro bodies compiled after; `decls`: the library's and the stream's declarations, parsed once
+;; (native.macros.declares).
 (defstruct Session (jit: jit/JitSession take: i64 at: i64 set-hook: i64 readers: readers/Readers pending: (Cell (Option Diagnostic))
-                    imported: (Cell (Map str (Vec LItem))) importing: (Cell (Set str)) iface: (Cell (Vec LItem))))
+                    imported: (Cell (Map str (Vec LItem))) importing: (Cell (Set str)) iface: (Cell (Vec LItem)) decls: (Vec LItem)))
 
 ;; What `(import "FILE")` does (spec/lir.md 4.7), given the importing module's environment, the file as written and the form's position:
 ;; native.imports loads the module and defines its macros in the environment; the interface items are the loader's to keep. The macros

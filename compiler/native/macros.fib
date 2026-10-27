@@ -10,7 +10,7 @@
   (:use lir.diag lir.sexp lir.ast lir.types native.error native.macros.types native.macros.helpers)
   (:require [lir.parse.items :as items] [lir.parse.names :as names] [native.jit :as jit] [native.call :as call]
             [native.macros.objects :as obj] [native.macros.lib :as lib] [native.macros.readlib :as readlib]
-            [native.macros.readers :as readers] [native.macros.readforms :as rf] [native.timing :as timing]))
+            [native.macros.readers :as readers] [native.macros.readforms :as rf] [native.macros.declares :as decl] [native.timing :as timing]))
 
 ;; The module's own file counts as being loaded: a library that requires it is a cycle.
 (defun env-new :private (file: str gensym: i64) -> Env
@@ -217,8 +217,9 @@
             (give-cell (lair-str (jit/session-address j "lir.sexp.gensym-cell")))
             (_ (call/call-i64 give-cell [g]))
             (mb (readers/mailbox-of rs))
-            (_ (call/call-i64 set-hook [(. (call/hook-addresses) one) (. mb handle)])))
-    (Ok (Session j take at set-hook rs (cell nil) (cell (map-empty)) (cell (set-empty)) (cell [])))))
+            (_ (call/call-i64 set-hook [(. (call/hook-addresses) one) (. mb handle)]))
+            (decls (match (decl/library-declares) ((Err d) (Err (diag-str d))) ((Ok v) (Ok v)))))
+    (Ok (Session j take at set-hook rs (cell nil) (cell (map-empty)) (cell (set-empty)) (cell []) decls))))
 
 (defun session-of :private (env: Env) -> (Result Session str)
   (match @(. env session)
@@ -229,17 +230,16 @@
 
 ;; ---------------------------------------------------------------- define-macro
 
-;; The items of a macro's module: the library's declarations, the earlier macros', the macro-imported modules' interfaces, then the definition.
+;; The items of a macro's module: the library's declarations, the earlier macros', the macro-imported modules' interfaces, then the definition;
+;; each declaration an item made once (native.macros.declares), the definition parsed.
 (defun macro-module :private (env: Env s: Session def: Sexp) -> (Result LModule Diagnostic)
   (let ((t0 (sys-clock-now)) (r (macro-module-items env s def)))
     (do (jit/session-note (. s jit) "macro-module" t0) r)))
 
 (defun macro-module-items :private (env: Env s: Session def: Sexp) -> (Result LModule Diagnostic)
-  (try-let ((forms (read (str (lib/declares-source) "\n" (readlib/declares-source) "\n" (macro-declares env s)))))
-    (loop ((i 0) (out []))
-      (if (>= i (count forms))
-          (match (items/parse-item (sexp-plain def)) ((Err d) (Err d)) ((Ok it) (Ok (LModule (conj (into out @(. s iface)) it)))))
-          (match (items/parse-item (nth forms i)) ((Err d) (Err d)) ((Ok it) (recur (+ i 1) (conj out it))))))))
+  (match (items/parse-item (sexp-plain def))
+    ((Err d) (Err d))
+    ((Ok it) (Ok (LModule (conj (into (into (. s decls) (decl/macro-declare-items env s)) @(. s iface)) it))))))
 
 ;; `(define-macro NAME (PARAM..) BLOCK..)`: the blocks are expanded with the macros so far, then compiled.
 (defun define-macro :private (env: Env form: Sexp) -> (Option Diagnostic)
