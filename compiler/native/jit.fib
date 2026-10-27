@@ -122,7 +122,7 @@
 
 ;; ---------------------------------------------------------------- through the program's objects (native.jit.objects)
 
-;; As `session-add-source`, through the cache `c`: a text compiled before in the program is added as its object.
+;; As `session-add-source`, through the cache `c`: a text compiled before, in the program or one before it, is added as its object.
 (defun session-add-source-cached (s: JitSession c: objects/ObjCache name: str src: str) -> (Result unit LairError)
   (let ((key (str "source\n" src)))
     (match (objects/cache-get c key)
@@ -131,14 +131,16 @@
              (do (session-note s "jit.parse-check" t0)
                  (match r
                    ((Err ds) (Err (ErrInvalid ds)))
-                   ((Ok m) (compile-object s c key name m)))))))))
+                   ((Ok m) (match (load-stored s c key m)
+                             ((some o) (add-object s name m (. o buffer)))
+                             (nil (compile-object s c key name m)))))))))))
 
 ;; As `session-add-module`, through the cache `c`: a module whose text `key` (lir.print's of `m`, which reads back as the module, made by the
-;; caller) was compiled before in the program is added as that object, without checking, lowering or generating it again (the checker's
-;; verdict on a text and the code of it are the text's); the libraries, the names rules and the target are the session's and are applied
-;; to it as to any module.
+;; caller) was compiled before, in the program or by a program before it (the store on disk, native.jit.store), is added as that object,
+;; without checking, lowering or generating it again (the checker's verdict on a text and the code of it are the text's, for one compiler
+;; and one LLVM); the libraries, the names rules and the target are the session's and are applied to it as to any module.
 (defun session-add-module-keyed (s: JitSession c: objects/ObjCache key: str name: str m: LModule) -> (Result unit LairError)
-  (match (objects/cache-get c key)
+  (match (match (objects/cache-get c key) ((some o) (some o)) (nil (load-stored s c key m)))
     ((some o) (add-object s name m (. o buffer)))
     (nil (let ((t1 (sys-clock-now)) (r (check/check m)))
            (do (session-note s "jit.check" t1)
@@ -146,20 +148,27 @@
                  ((Err ds) (Err (ErrInvalid ds)))
                  ((Ok _) (compile-object s c key name m))))))))
 
+;; The object of `key` in the store on disk, when the cache has one (FIB_TIME: `jit.store-load`).
+(defun load-stored :private (s: JitSession c: objects/ObjCache key: str m: LModule) -> (Option objects/CachedObject)
+  (if (objects/stored? c)
+      (let ((t0 (sys-clock-now)) (r (objects/cache-load c key m))) (do (session-note s "jit.store-load" t0) r))
+      nil))
+
 ;; The libraries, the names rules and the target of a module about to join the session (`add-checked`'s first steps).
 (defun admit :private (s: JitSession m: LModule) -> (Result unit LairError)
   (let ((t0 (sys-clock-now)) (r (try-let ((_ (load-libraries m))) (names-check @(. s names) m support/process-defines?))))
     (do (session-note s "jit.names" t0)
         (match r ((Err e) (Err e)) ((Ok _) (target/target-runnable m))))))
 
-;; A checked module admitted, lowered, optimised and generated as an object file, kept in the cache under `key`, and added.
+;; A checked module admitted, lowered, optimised and generated as an object file at the cache's level (native.jit.objects `cache-level`),
+;; kept in the cache under `key`, and added.
 (defun compile-object :private (s: JitSession c: objects/ObjCache key: str name: str m: LModule) -> (Result unit LairError)
   (try-let ((_ (admit s m))
             (o (let ((t0 (sys-clock-now)) (r (nl/lower (dead-internals m) name (. s triple) (. s data-layout)))) (do (session-note s "jit.lower" t0) r)))
             (buf (let ((t0 (sys-clock-now))
-                       (r (match (passes/optimize (. o module) 0 (. s opt-level)) ((Err e) (Err e)) ((Ok _) (objects/emit c (. o module))))))
+                       (r (try-let ((tm (objects/cache-machine c)) (_ (passes/optimize (. o module) tm (objects/cache-level c)))) (objects/emit c (. o module)))))
                    (do (owned/owned-dispose o) (session-note s "jit.codegen" t0) r))))
-    (do (objects/cache-put c key (objects/CachedObject buf m))
+    (do (let ((t0 (sys-clock-now))) (do (objects/cache-keep c key (objects/CachedObject buf m)) (session-note s "jit.store-save" t0)))
         (add-admitted s name m buf))))
 
 ;; The object `buf` (the cache's: a copy is given to ORC) added to the session as the module `m`, admitted first.

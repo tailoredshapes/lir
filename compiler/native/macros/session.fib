@@ -31,7 +31,7 @@
 (defun report-phases (s: Session) -> unit
   (let ((ts (jit/session-times (. s jit))))
     (doseq [k ["session-new" "session-import" "compile-entry" "macro-run" "macro-def" "macro-module" "jit.cache-key" "jit.parse-check"
-               "jit.check" "jit.names" "jit.lower" "jit.optimize" "jit.codegen" "jit.orc-add" "jit.lookup"]]
+               "jit.store-load" "jit.check" "jit.names" "jit.lower" "jit.optimize" "jit.codegen" "jit.store-save" "jit.orc-add" "jit.lookup"]]
       (match (get ts k)
         ((some ns) (eprintln (str "time lir.macros." k " " (quot ns 1000000) " ms")))
         (nil ())))))

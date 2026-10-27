@@ -50,12 +50,16 @@ tools_c-diff := lairf lir2c
 check_fixed-point := scripts/fixed-point.sh $(SEED_ABS) $(LAIRF) $(ABS_BUILD)/fixed-point $(CASE_JOBS)
 tools_fixed-point := lairf
 
+# the object files of macro sessions kept on disk between programs: cold, warm, refused when a file holds another key, none when off
+check_macro-store := compiler/tests/native/macro-store.sh $(LAIRF)
+tools_macro-store := lairf
+
 # the libc functions of a 32-bit target: declared and called with `i32` where lIR says `i64` (wasm32; LLVM IR checked, nothing run)
 check_libc-narrow := env LAIRF=$(LAIRF) $(T)/native/libc-narrow.sh
 tools_libc-narrow := lairf
 
 GATE_CHECKS := cases golden-lair-ast golden-lair-check golden-lair-llvm $(UNIT_NAMES) words respell facts \
-  p0-target a64-sibcall libc-narrow js c-diff fixed-point
+  p0-target a64-sibcall libc-narrow macro-store js c-diff fixed-point
 # The table of the runtime's C functions equals the declares of fibber's rt/*.lir. rt lives in fibber, so this check is part of the gate only when
 # FIBBER_RT names that directory (`make gate FIBBER_RT=../fibber/rt`); it reruns when a file of it changes.
 FIBBER_RT ?=

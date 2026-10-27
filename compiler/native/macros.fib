@@ -10,7 +10,8 @@
   (:use lir.diag lir.sexp lir.ast lir.types native.error native.macros.types native.macros.helpers)
   (:require [lir.parse.items :as items] [lir.parse.names :as names] [native.jit :as jit] [native.call :as call]
             [native.macros.objects :as obj] [native.macros.readers :as readers] [native.macros.readforms :as rf] [native.macros.declares :as decl] [native.timing :as timing]
-            [native.macros.session :as sess] [native.macros.memo :as memo]))
+            [native.macros.session :as sess] [native.macros.memo :as memo]
+            [lir.print :as print]))
 
 ;; The module's own file counts as being loaded: a library that requires it is a cycle.
 (defun env-new :private (file: str gensym: i64 cache: MacroCache text: str) -> Env
@@ -408,7 +409,7 @@
                             (session-add-import s path key (LModule (into @deps (. (. p module) items))) (interface-items (. p module)) pos)))))))))
 
 (defun session-add-import :private (s: Session path: str key: str m: LModule iface: (Vec LItem) pos: i64) -> (Result (Vec LItem) Diagnostic)
-  (match (jit/session-add-module (. s jit) (str "macro-import." path) m)
+  (match (jit/session-add-module-keyed (. s jit) (. (. s cache) objects) (print/print-module m) (str "macro-import." path) m)
     ((Err e) (Err (module-error (str "macro-import " path) e pos)))
     ((Ok _) (do (set! (. s imported) (assoc @(. s imported) key iface))
                 (set! (. s prune) (decl/prune-add @(. s prune) (+ (count (. s decls)) (count @(. s iface))) iface))

@@ -2,8 +2,8 @@
 # The planted faults of a macro's module (spec/lir.md 4.6): what it declares (native.macros.declares), the program's object files a
 # session adds it from (native.jit `session-add-module-keyed`, native.jit.objects) and the program's memo of library forms
 # (native.macros.memo). lairf and unit-macro-declares.fib are built by the
-# seed as they are (the cases of cases/lir/macros and the unit must pass), then once per fault with one module changed in a shadow
-# directory that comes first on the module path; each fault must make a case of cases/lir/macros or the unit fail. A fault that does not
+# seed as they are (the cases of cases/lir/macros, the unit and compiler/tests/native/macro-store.sh must pass), then once per fault with one
+# module changed in a shadow directory that comes first on the module path; each fault must make one of them fail. A fault that does not
 # fail is a hole in the tests. Not in `make gate` (it builds lairf once per fault): run it after a change to those modules.
 # usage: macro-faults.sh FIBC [WORKDIR]     (LLVM_LIBDIR the directory of libLLVM-21.so; JOBS faults at once, default 4)
 # Exit: 0 the clean build passes and every fault is caught; 1 not; 2 a tool is missing.
@@ -22,6 +22,7 @@ cd "$root" || exit 2
 # run DIR: builds lairf and the unit with DIR first on the module path, runs the macro cases and the unit; the verdict in DIR/verdict.
 run() {
   local d=$1
+  export FIB_LIRO_CACHE=$d/liro-cache
   # the main file is copied beside the shadow: fibc looks in the main file's directory first, so the shadow must be that directory
   cp compiler/lairf.fib "$d/lairf.fib"
   if ! "$fibc" build "$d/lairf.fib" -I "$d" -I compiler -L "$libdir" -l LLVM-21 -o "$d/lairf" > "$d/build.log" 2>&1 \
@@ -31,12 +32,13 @@ run() {
   fi
   "$d/lairf" --old-spelling cases cases/lir/macros -j 4 > "$d/cases.out" 2>&1
   "$d/unit" > "$d/unit.out" 2>&1; local ust=$?
+  compiler/tests/native/macro-store.sh "$d/lairf" > "$d/store.out" 2>&1; local sst=$?
   local cfail; cfail=$(grep -c '^FAIL' "$d/cases.out")
   local total; total=$(grep '^total:' "$d/cases.out")
-  if [ "$cfail" -eq 0 ] && [ -n "$total" ] && [ "$ust" -eq 0 ] && ! grep -q '^FAIL\|  fail ' "$d/unit.out"; then
-    echo "pass: $total; unit: $(grep 'scenarios' "$d/unit.out")" > "$d/verdict"
+  if [ "$cfail" -eq 0 ] && [ -n "$total" ] && [ "$ust" -eq 0 ] && ! grep -q '^FAIL\|  fail ' "$d/unit.out" && [ "$sst" -eq 0 ]; then
+    echo "pass: $total; unit: $(grep 'scenarios' "$d/unit.out"); $(tail -1 "$d/store.out")" > "$d/verdict"
   else
-    echo "fail: $total; first: $(grep -m1 '^FAIL' "$d/cases.out" | cut -c1-120); unit: $(grep 'scenarios' "$d/unit.out")" > "$d/verdict"
+    echo "fail: $total; first: $(grep -m1 '^FAIL' "$d/cases.out" | cut -c1-120); unit: $(grep 'scenarios' "$d/unit.out"); $(grep -m1 FAIL "$d/store.out" | cut -c1-80)" > "$d/verdict"
   fi
 }
 
@@ -82,6 +84,8 @@ fault earlier-macros-not-declared $D '(vec (keep (fn (pr: (Pair i64 str)) (macro
 fault symbols-not-mentioned $D '((SxAtom a _ _) (mention-text acc a))' '((SxAtom a _ _) acc)'
 fault cache-object-not-copied $J '(orc/add-object (. s lljit) (objects/buffer-copy buf))' '(orc/add-object (. s lljit) buf)'
 M=native/macros/memo.fib
+S=native/jit/store.fib
+fault store-key-not-checked $S '(if (and (>= size (+ 8 n)) (= (load-i64 (ffi/addr->ptr start)) n) (same-bytes (+ start 8) full))' '(if (>= size (+ 8 n))'
 fault cache-key-without-declarations $M '(key (str (print/print-module (LModule decls)) (. d key)))' '(key (. d key))'
 fault memo-heads-ignored $M '(not (some? (first (filter (fn (h: str) (some? (get @(. env macros) h))) hs))))' 'true'
 fault memo-readtable-ignored $M '(if (or @(. (. (. env readers) table) active) (= sp 0)' '(if (or false (= sp 0)'
