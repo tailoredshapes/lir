@@ -1,0 +1,11 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6: a library that cache-a.lir and cache-b.lir require: (tick) is the next count of macro-import-counter.lir, macro-imported
+;; into the session of the module that requires it; run alone it has no main.
+(MACRO-IMPORT "macro-import-counter.lir")
+(DEFINE-MACRO tick ()
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.integer) (CALL (GLOBAL count-up) (I64 0))))
+      (RET l))))

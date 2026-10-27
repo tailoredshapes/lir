@@ -7,7 +7,8 @@
 
 ;; The environment of a file read for the module of `env` (a library, an included file): the file's own name, everything else the module's.
 (defun env-sub (env: Env path: str) -> Env
-  (Env path (file-cstr path) (. env macros) (. env session) (. env loaded) (. env loading) (. env ns) (. env readers) (. env seq) (. env hook) (. env collected) (. env gensym)))
+  (Env path (file-cstr path) (. env macros) (. env session) (. env loaded) (. env loading) (. env ns) (. env readers) (. env seq) (. env hook) (. env collected) (. env gensym)
+       (. env cache)))
 
 ;; The file as the objects carry it: a C string that lives as long as they do, null for none.
 (defun file-cstr (file: str) -> ptr

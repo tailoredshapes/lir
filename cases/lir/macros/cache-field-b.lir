@@ -1,0 +1,12 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6: a library that cache-b.lir requires, the same text as cache-field-a.lir but for the module it
+;; macro-imports: (field) is field 1 of cache.the-cfg, whose struct cache-cfg-b.lir defines; run alone it has no main.
+(MACRO-IMPORT "cache-cfg-b.lir")
+(DEFINE-MACRO field ()
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0)))
+          (v (LOAD I32 (GETELEMENTPTR (STRUCT cache.cfg) (GLOBAL cache.the-cfg) (I32 0) (I32 1)))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.integer) (SEXT I64 v)))
+      (RET l))))

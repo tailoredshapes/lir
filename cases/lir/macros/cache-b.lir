@@ -1,0 +1,9 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6: a module cache.lir imports: its macro session has the macros of cache-lib.lir and cache-field-b.lir, each compiled into it
+;; as into the session of the other module that requires them; run alone it is no program.
+(REQUIRE-MACROS "cache-lib.lir")
+(REQUIRE-MACROS "cache-field-b.lir")
+(DEFINE (b.first I64) () (BLOCK entry (RET (tick))))
+(DEFINE (b.second I64) () (BLOCK entry (RET (tick))))
+(DEFINE (b.field I64) () (BLOCK entry (RET (field))))

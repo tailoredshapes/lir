@@ -1,0 +1,17 @@
+;; expect: accept
+;; out: 1 2 1 2
+;; out: 2 20
+;; spec/lir.md 4.6: each module's macros are compiled into its own session, whatever another module's session compiled. cache-a.lir and
+;; cache-b.lir require the same libraries: (tick) counts in the module macro-import-counter.lir each session has of its own, so each module
+;; counts from 1; (field) is one text in both, compiled against the struct cache.cfg of the module each session macro-imports, (I32 I32) in
+;; cache-a's and (I64 I32) in cache-b's, so field 1 is read at offset 4 in one and 8 in the other. lair compiles a module's text once per
+;; program and adds the object to every session that compiles the same text (native.jit.objects): neither the counter nor the layout may
+;; leak from one session to the other.
+(DECLARE printf I32 (PTR ...))
+(IMPORT "cache-a.lir")
+(IMPORT "cache-b.lir")
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%lld %lld %lld %lld\n") (CALL (GLOBAL a.first)) (CALL (GLOBAL a.second)) (CALL (GLOBAL b.first)) (CALL (GLOBAL b.second)))
+    (CALL (GLOBAL printf) (STRING "%lld %lld\n") (CALL (GLOBAL a.field)) (CALL (GLOBAL b.field)))
+    (RET (I32 0))))

@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6: the runtime module cache-field-a.lir macro-imports: the struct cache.cfg as (I32 I32) and a global of it whose field 1 is
+;; 2; cache-cfg-b.lir defines the struct otherwise. Run alone it is no program.
+(DEFSTRUCT cache.cfg (I32 I32))
+(GLOBAL cache.the-cfg (STRUCT cache.cfg) ((STRUCT cache.cfg) (I32 1) (I32 2)))

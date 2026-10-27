@@ -1,0 +1,56 @@
+;; compiler/native/jit/objects.fib: the object files a program's JIT sessions share. lair's macro sessions (native.macros, spec/lir.md 4.6)
+;; are one per module that defines a macro, each with the form library and the stream's library compiled into it and each macro of the
+;; libraries the module requires compiled again: the same modules, compiled once per session. A program keeps here the object file of each
+;; module it compiled, by a key that determines the module (its text), and a session that adds a module of a key the program has compiled
+;; adds the object instead: ORC links it into the session, its globals the session's own, and nothing is checked, lowered or generated
+;; again (native.jit `session-add-module-cached`). The objects are made by one target machine, the host's at the level the sessions
+;; generate code at (native.jit `session-new-fast-codegen`), the program's, freed with it (`cache-free`). No state outside the program:
+;; the loader makes the cache and passes it down (ADR 0013).
+(ns native.jit.objects
+  (:use lir.ast native.error)
+  (:require [llvm.core :as core] [llvm.target :as lt] [llvm.ffi :as ffi] [native.target :as target]))
+
+;; A compiled module: its object file (an LLVMMemoryBuffer the cache owns) and the module, for the names rules of the session it joins.
+(defstruct CachedObject (buffer: i64 module: LModule))
+
+;; The program's objects by key, and the target machine that makes them (0 until one is needed).
+(defstruct ObjCache (tm: (Cell i64) objects: (Cell (Map str CachedObject))))
+
+(defun cache-new () -> ObjCache
+  (ObjCache (cell 0) (cell {})))
+
+(defun cache-get (c: ObjCache key: str) -> (Option CachedObject)
+  (get @(. c objects) key))
+
+(defun cache-put (c: ObjCache key: str o: CachedObject) -> unit
+  (set! (. c objects) (assoc @(. c objects) key o)))
+
+;; The machine that makes the objects: the host's at code generation level 0, as a macro session's.
+(defun cache-machine (c: ObjCache) -> (Result i64 LairError)
+  (if (= @(. c tm) 0)
+      (match (target/machine-host 0)
+        ((Err e) (Err e))
+        ((Ok m) (do (set! (. c tm) (. m tm)) (Ok (. m tm)))))
+      (Ok @(. c tm))))
+
+;; The module's object file, made by the cache's machine: a memory buffer the caller owns.
+(defun emit (c: ObjCache module: i64) -> (Result i64 LairError)
+  (match (cache-machine c)
+    ((Err e) (Err e))
+    ((Ok tm) (match (lt/emit-object tm module)
+               ((Err m) (Err (ErrBackend (str "code generation failed: " m))))
+               ((Ok b) (Ok b))))))
+
+;; A copy of the object's buffer, for a session to take (ORC consumes the buffer it is given).
+(defun buffer-copy (buf: i64) -> i64
+  (let ((name (ffi/bytes-new "lir.object")))
+    (unsafe
+      (let ((b (core/LLVMCreateMemoryBufferWithMemoryRangeCopy (ffi/addr->ptr (core/LLVMGetBufferStart buf)) (core/LLVMGetBufferSize buf) name)))
+        (do (free name) b)))))
+
+;; Frees the objects and the machine: when the program is read, after every session that took one is freed.
+(defun cache-free (c: ObjCache) -> unit
+  (do (doseq [o (vals @(. c objects))] (unsafe (core/LLVMDisposeMemoryBuffer (. o buffer))))
+      (set! (. c objects) {})
+      (when (not (= @(. c tm) 0)) (unsafe (lt/LLVMDisposeTargetMachine @(. c tm))))
+      (set! (. c tm) 0)))
