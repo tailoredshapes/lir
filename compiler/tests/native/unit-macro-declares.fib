@@ -2,7 +2,7 @@
 ;; declarations are kept as a `Prune` as they grow: clean while they are a valid module (no name or struct twice, no reserved name, no struct
 ;; that holds itself, no owned kind outside a parameter), with the structs they name and none defines `missing`; and a body that names some
 ;; of them gets those and every struct they name, through their types and the structs' fields. The cases cases/lir/macros/prune*.lir and
-;; reject-prune-duplicate.lir are the same rules end to end; compiler/tests/native/macro-prune-faults.sh plants faults that they catch.
+;; reject-prune-duplicate.lir are the same rules end to end; compiler/tests/native/macro-faults.sh plants faults that they catch.
 ;; Build: fibc build compiler/tests/native/unit-macro-declares.fib -I compiler -I compiler/tests/native -I compiler/tests/support -o OUT
 (ns tests.native.unit-macro-declares (:use fib.test.unit lir.diag lir.sexp lir.types lir.ast native.macros.types)
   (:require [fib.test.run :as test-runner] [lir.parse :as parse] [native.macros.declares :as decl]))

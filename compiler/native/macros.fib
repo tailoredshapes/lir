@@ -272,7 +272,7 @@
 (defun compile-entry :private (env: Env s: Session what: str fname: str ps: Params blocks: (Vec Sexp) pos: i64) -> (Result i64 Diagnostic)
   (let ((t0 (sys-clock-now)))
     (try-let ((m (macro-module env s (macro-define fname ps blocks pos)))
-              (_ (match (jit/session-add-module (. s jit) (str "macro." fname) m) ((Err e) (Err (module-error what e pos))) ((Ok _) (Ok ()))))
+              (_ (match (jit/session-add-module-cached (. s jit) (. s cache) (str "macro." fname) m) ((Err e) (Err (module-error what e pos))) ((Ok _) (Ok ()))))
               (entry (match (jit/session-address (. s jit) fname) ((Err e) (Err (module-error what e pos))) ((Ok a) (Ok a)))))
       (do (set! (. env ns) (+ @(. env ns) (- (sys-clock-now) t0)))
           (jit/session-note (. s jit) "compile-entry" t0)
