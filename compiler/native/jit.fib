@@ -164,9 +164,11 @@
 ;; kept in the cache under `key`, and added.
 (defun compile-object :private (s: JitSession c: objects/ObjCache key: str name: str m: LModule) -> (Result unit LairError)
   (try-let ((_ (admit s m))
-            (o (let ((t0 (sys-clock-now)) (r (nl/lower (dead-internals m) name (. s triple) (. s data-layout)))) (do (session-note s "jit.lower" t0) r)))
+            (o (let ((t0 (sys-clock-now)) (r (nl/lower (dead-internals m) name (. s triple) (. s data-layout))))
+                 (do (session-note s "jit.lower" t0) r)))
             (buf (let ((t0 (sys-clock-now))
-                       (r (try-let ((tm (objects/cache-machine c)) (_ (passes/optimize (. o module) tm (objects/cache-level c)))) (objects/emit c (. o module)))))
+                       (r (try-let ((tm (objects/cache-machine c)) (_ (passes/optimize (. o module) tm (objects/cache-level c))))
+                            (objects/emit c (. o module)))))
                    (do (owned/owned-dispose o) (session-note s "jit.codegen" t0) r))))
     (do (let ((t0 (sys-clock-now))) (do (objects/cache-keep c key (objects/CachedObject buf m)) (session-note s "jit.store-save" t0)))
         (add-admitted s name m buf))))

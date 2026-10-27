@@ -2,9 +2,10 @@
 ;; program). A module's object is stored under liro's cache (FIB_LIRO_CACHE, `off` for none; native.liro.context `cache-root`), in its
 ;; directory `macro-objects`, one file per module: its key and its object. The key is the module's text (lir.print's, which reads back as
 ;; the module) after the store's contract: liro's identity of the compiler and of LLVM (the SHA-256 of each, native.liro.hash), the host's
-;; triple, data layout, CPU and features, and the level the objects are optimised and generated at (native.jit.objects `cache-level`). A file is found by a hash of the key and taken only when the key
-;; it holds is the key, byte for byte, so two keys of one hash cost a compile and nothing else. A file is written whole under a name of its
-;; own and renamed into place, so a reader sees an old file or a new one, never a part; a store that cannot be read or written is no store.
+;; triple, data layout, CPU and features, and the level the objects are optimised and generated at (native.jit.objects `cache-level`). A
+;; file is found by a hash of the key and taken only when the key it holds is the key, byte for byte, so two keys of one hash cost a
+;; compile and nothing else. A file is written whole under a name of its own and renamed into place, so a reader sees an old file or a new
+;; one, never a part; a store that cannot be read or written is no store.
 (ns native.jit.store
   (:require [llvm.core :as core] [llvm.ffi :as ffi] [llvm.target :as lt] [native.target :as target]
             [native.liro.context :as liro] [native.liro.hash :as hash] [native.liro.io :as io] [fib.os :as os]))

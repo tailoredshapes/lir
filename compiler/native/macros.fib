@@ -9,8 +9,8 @@
 (ns native.macros
   (:use lir.diag lir.sexp lir.ast lir.types native.error native.macros.types native.macros.helpers)
   (:require [lir.parse.items :as items] [lir.parse.names :as names] [native.jit :as jit] [native.call :as call]
-            [native.macros.objects :as obj] [native.macros.readers :as readers] [native.macros.readforms :as rf] [native.macros.declares :as decl] [native.timing :as timing]
-            [native.macros.session :as sess] [native.macros.memo :as memo]
+            [native.macros.objects :as obj] [native.macros.readers :as readers] [native.macros.readforms :as rf]
+            [native.macros.declares :as decl] [native.macros.session :as sess] [native.macros.memo :as memo] [native.timing :as timing]
             [lir.print :as print]))
 
 ;; The module's own file counts as being loaded: a library that requires it is a cycle.
@@ -215,7 +215,8 @@
 ;; ---------------------------------------------------------------- define-macro
 
 (defun record-macro :private (env: Env s: Session name: str ps: Params) -> unit
-  (do (set! (. env macros) (assoc @(. env macros) name (Macro name (cell 0) (- (count (. ps names)) (if (. ps rest) 1 0)) (. ps rest) (. env file) (. s take) (. s at) s)))
+  (do (set! (. env macros)
+            (assoc @(. env macros) name (Macro name (cell 0) (- (count (. ps names)) (if (. ps rest) 1 0)) (. ps rest) (. env file) (. s take) (. s at) s)))
       (set! (. s prune) (decl/prune-macro @(. s prune) name))))
 
 ;; `(define-macro NAME (PARAM..) BLOCK..)`: the blocks are expanded with the macros so far, then compiled. With `key`, a library's form
