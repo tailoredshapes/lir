@@ -123,7 +123,8 @@
         :else (LoV kd-interior -1 (roots-of p) (if (= (. p kind) kd-interior) (. p base) (. p id))
                    (match t ((TNamed s) s) (_ "")))))
 
-;; A phi's incoming values; an entry naming the phi itself is skipped (a loop).
+;; A phi's incoming values. An entry naming the phi itself, or a phi it is in a cycle with, is not resolved while the phi is: the join leaves
+;; it out (`optimistic`, `resolve-cycles`), so `(x (phi T (entry v) (back x)))` takes the kind of v.
 (defun static-phi (cx: LoCx inc: (Vec LBinding)) -> LoV
   (static-join cx (mapv (fn (b: LBinding) (static-val cx (. b value))) inc) true))
 
@@ -131,7 +132,8 @@
 ;; guaranteed, interior and none make guaranteed with the roots' union; owned with guaranteed is `mixed` (rule 3), owned.
 (defun static-join (cx: LoCx vs: (Vec LoV) phi: bool) -> LoV
   (let ((known (filterv (fn (v: LoV) (not (= (. v kind) kd-unresolved))) vs)))
-    (cond (< (count known) (count vs)) (LoV kd-unresolved -1 [] -1 "")
+    (cond (= (count known) 0) (LoV kd-unresolved -1 [] -1 "")
+          (and (< (count known) (count vs)) (not @(. cx optimistic))) (LoV kd-unresolved -1 [] -1 "")
           (every? (fn (v: LoV) (= (. v kind) kd-scalar)) known) val-scalar
           :else (let ((roots (reduce (fn (acc: (Vec i64) v: LoV) (roots-union acc (roots-of v))) [] known))
                       (owned (count (filterv (fn (v: LoV) (or (= (. v kind) kd-owned) (= (. v kind) kd-stack))) known)))
@@ -156,7 +158,42 @@
                                                  (mixed (= (. s id) -2))))
                         (recur (+ i 1) true)))))))))
 
-;; A value that stays unresolved after the rounds names itself around a loop with nothing else known: a phi of itself. It is `none`.
+;; Whether the table's entry `v` already holds the value `s`.
+(defun same-val? (v: LoVal s: LoV) -> bool
+  (and (= (. v kind) (. s kind)) (= (. v roots) (. s roots)) (= (. v base) (. s base)) (= (. v struct) (. s struct))
+       (= (. v mixed) (= (. s id) -2))))
+
+;; One round over `ids` with the unresolved entries of a join left out; whether any value changed. A value whose operands are all still
+;; unresolved stays so.
+(defun cycle-round (cx: LoCx ids: (Vec i64)) -> bool
+  (reduce (fn (changed: bool i: i64)
+            (let ((v (own-val cx i)) (s (static-val cx (unwrap-or (. v def) (LExpr KNull 0)))))
+              (if (or (= (. s kind) kd-unresolved) (same-val? v s))
+                  changed
+                  (do (own-set-val cx i (with v (kind (. s kind)) (roots (. s roots)) (base (. s base)) (struct (. s struct))
+                                              (mixed (= (. s id) -2))))
+                      true))))
+          false ids))
+
+;; The ids of the values the strict rounds left unresolved.
+(defun unresolved-ids (cx: LoCx) -> (Vec i64)
+  (loop ((i 0) (acc: (Vec i64) []))
+    (cond (>= i (own-count cx)) acc
+          (and (= (. (own-val cx i) kind) kd-unresolved) (some? (. (own-val cx i) def))) (recur (+ i 1) (conj acc i))
+          :else (recur (+ i 1) acc))))
+
+;; What the strict rounds left unresolved: phis that name themselves or each other (a loop variable passed on unchanged, a swap of two),
+;; and what is derived from them. Each is the join of what enters the cycle from outside, the least fixed point: the values are computed
+;; again, entries not known yet left out, until none changes (a join only gains entries, so kinds and roots only grow, and the rounds are
+;; bounded by that growth).
+(defun resolve-cycles (cx: LoCx) -> unit
+  (let ((ids (unresolved-ids cx)) (cap (* (+ (count ids) 4) (+ (count ids) 4))))
+    (do (set! (. cx optimistic) true)
+        (loop ((n 0))
+          (when (and (< n cap) (cycle-round cx ids)) (recur (+ n 1))))
+        (set! (. cx optimistic) false))))
+
+;; A value that stays unresolved after that has no entry from outside at all: a phi of itself. It is `none`.
 (defun resolve-rest (cx: LoCx) -> unit
   (dotimes (i (own-count cx))
     (let ((v (own-val cx i)))
@@ -169,4 +206,5 @@
           (when (and (. v param) (= (. v kind) kd-guaranteed)) (own-set-val cx i (with v (roots [i]))))))
       (loop ((n 0))
         (when (and (< n 16) (resolve-round cx)) (recur (+ n 1))))
+      (resolve-cycles cx)
       (resolve-rest cx)))

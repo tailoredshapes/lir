@@ -1566,6 +1566,13 @@ Every value of type `(PTR (ADDRSPACE 1))` has a **kind**, fixed by what defines 
 | `stack` | a scope-local object of this frame, ended by exactly one `dealloc-stack` | `alloc-stack` |
 | `interior` | the address of a field or element of an object, usable only as the address operand of a load, store, atomic or further `getelementptr` | `getelementptr` whose base is `(PTR (ADDRSPACE 1))` (roots: the base's; an owned or stack base is itself the root) |
 
+A `phi` may name itself or other `phi`s through a back edge (a loop variable passed on unchanged, a swap of two): such a
+`phi` takes the kind and roots of what enters the cycle from outside, as if the entries that are the cycle's own were not there. `(x (PHI T
+(entry v) (back x)))` has the kind of `v`; `(a (PHI T (entry p) (back b)))` with `(b (PHI T (entry q) (back a)))` has the join of `p` and `q`
+for both, the rules of the table above (and rule 3 when they mix owned and guaranteed values). The kinds are the least fixed point of
+these joins, so no copy of the variable is needed to read a field through it. A `phi` of nothing but itself and other such `phi`s has no
+entry from outside and is `none`.
+
 The **roots** of a value are the owned, stack or guaranteed-parameter
 values it was derived from. A parameter is written `((PTR (ADDRSPACE 1)) OWNED p)`
 or `((PTR (ADDRSPACE 1)) p)`; in a `declare` and in a function type the kind wraps the

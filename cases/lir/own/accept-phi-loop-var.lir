@@ -1,0 +1,115 @@
+;; expect: accept
+;; own: verify
+;; out: sum-g 21
+;; out: sum-o 21
+;; out: sum-m 214
+;; out: free 2
+;; out: free 1
+;; spec/lir.md 6.14.2: a phi of one managed value and itself, (x (phi (ptr 1) (entry v) (again x))), is a loop variable that is passed on
+;; unchanged. It takes the kind of v (owned, or guaranteed with v's roots), the address of a field of it, bound to a name, is an interior address
+;; and a load through it is accepted (plain and `load copy`). sum-m: a phi of three entries, one of them itself (a `recur` that replaces the
+;; variable on some paths only). Before the fix the phi stayed unresolved, so did the address, and both were `none`:
+;; ownership rule 9: load copy needs an address, found none.
+(declare printf i32 (ptr ...))
+(declare malloc ptr (i64))
+(declare free void (ptr))
+(defstruct hdr (i64 i32 i32))
+(defstruct box (%struct.hdr i64 (ptr 1)))
+(ownership (retain @rt.retain) (release @rt.release) (unique @rt.unique) (alloc @rt.alloc) (stack-init @rt.stack-init) (stack-end @rt.stack-end) (header %struct.hdr))
+(define unsafe internal (rt.alloc ptr) ((i64 size) (i32 tid))
+  (block entry
+    (let ((p (call @malloc size)))
+      (store (i64 1) (getelementptr %struct.hdr p (i32 0) (i32 0)))
+      (store tid (getelementptr %struct.hdr p (i32 0) (i32 1)))
+      (store (i32 0) (getelementptr %struct.hdr p (i32 0) (i32 2)))
+      (ret p))))
+(define unsafe internal (rt.retain void) ((ptr p))
+  (block entry (br (icmp eq p (ptr null)) done inc))
+  (block inc
+    (let ((c (getelementptr %struct.hdr p (i32 0) (i32 0))))
+      (store (add (load i64 c) (i64 1)) c)
+      (ret)))
+  (block done (ret)))
+(define unsafe internal (rt.release void) ((ptr p))
+  (block entry (br (icmp eq p (ptr null)) done dec))
+  (block dec
+    (let ((c (getelementptr %struct.hdr p (i32 0) (i32 0)))
+          (n (sub (load i64 c) (i64 1))))
+      (store n c)
+      (br (icmp eq n (i64 0)) gone done)))
+  (block gone
+    (call @printf (string "free %d\n") (load i32 (getelementptr %struct.hdr p (i32 0) (i32 1))))
+    (call @free p)
+    (ret))
+  (block done (ret)))
+(define unsafe internal (rt.unique i1) ((ptr p))
+  (block entry (ret (icmp eq (load i64 (getelementptr %struct.hdr p (i32 0) (i32 0))) (i64 1)))))
+(define unsafe internal (rt.stack-init void) ((ptr p) (i32 tid))
+  (block entry
+    (store (i64 0) (getelementptr %struct.hdr p (i32 0) (i32 0)))
+    (store tid (getelementptr %struct.hdr p (i32 0) (i32 1)))
+    (store (i32 4) (getelementptr %struct.hdr p (i32 0) (i32 2)))
+    (ret)))
+(define unsafe internal (rt.stack-end void) ((ptr p))
+  (block entry
+    (call @printf (string "stack-end %d\n") (load i32 (getelementptr %struct.hdr p (i32 0) (i32 1))))
+    (ret)))
+(define internal (sum-g i64) (((ptr 1) b) (i64 n))
+  (block entry (br again))
+  (block again
+    (let ((i (phi i64 (entry (i64 0)) (again j)))
+          (acc (phi i64 (entry (i64 0)) (again acc2)))
+          (x (phi (ptr 1) (entry b) (again x)))
+          (g (getelementptr %struct.box x (i32 0) (i32 1)))
+          (v (load i64 g))
+          (h (getelementptr %struct.box x (i32 0) (i32 2)))
+          (c (load copy (ptr 1) h))
+          (acc2 (add acc v))
+          (j (add i (i64 1))))
+      (destroy-value c)
+      (br (icmp slt j n) again done)))
+  (block done (ret acc2)))
+(define internal (sum-o i64) (((ptr 1) owned b) (i64 n))
+  (block entry (br again))
+  (block again
+    (let ((i (phi i64 (entry (i64 0)) (again j)))
+          (acc (phi i64 (entry (i64 0)) (again acc2)))
+          (x (phi (ptr 1) (entry b) (again x)))
+          (g (getelementptr %struct.box x (i32 0) (i32 1)))
+          (v (load i64 g))
+          (acc2 (add acc v))
+          (j (add i (i64 1))))
+      (br (icmp slt j n) again done)))
+  (block done (destroy-value x) (ret acc2)))
+(define internal (sum-m i64) (((ptr 1) a) ((ptr 1) b) (i64 n))
+  (block entry (br again))
+  (block again
+    (let ((i (phi i64 (entry (i64 0)) (even j) (odd j)))
+          (acc (phi i64 (entry (i64 0)) (even acc2) (odd acc2)))
+          (x (phi (ptr 1) (entry a) (even b) (odd x)))
+          (g (getelementptr %struct.box x (i32 0) (i32 1)))
+          (v (load i64 g))
+          (h (getelementptr %struct.box x (i32 0) (i32 2)))
+          (c (load copy (ptr 1) h))
+          (acc2 (add acc v))
+          (j (add i (i64 1))))
+      (destroy-value c)
+      (br (icmp slt j n) pick done)))
+  (block pick (br (icmp eq (and j (i64 1)) (i64 0)) even odd))
+  (block even (br again))
+  (block odd (br again))
+  (block done (ret acc2)))
+(define (main i32) ()
+  (block entry
+    (let ((b (alloc-object %struct.box (i32 1))))
+      (store (i64 7) (getelementptr %struct.box b (i32 0) (i32 1)))
+      (store init ((ptr 1) null) (getelementptr %struct.box b (i32 0) (i32 2)))
+      (call @printf (string "sum-g %lld\n") (call @sum-g b (i64 3)))
+      (call @printf (string "sum-o %lld\n") (call @sum-o (copy-value b) (i64 3)))
+      (let ((b2 (alloc-object %struct.box (i32 2))))
+        (store (i64 100) (getelementptr %struct.box b2 (i32 0) (i32 1)))
+        (store init ((ptr 1) null) (getelementptr %struct.box b2 (i32 0) (i32 2)))
+        (call @printf (string "sum-m %lld\n") (call @sum-m b b2 (i64 4)))
+        (destroy-value b2))
+      (destroy-value b)
+      (ret (i32 0)))))

@@ -1,0 +1,24 @@
+;; expect: reject
+;; own: verify
+;; error: 20:11: error: ownership rule 3: phi in again mixes owned (from again) and guaranteed (from entry) values
+;; rule 3 through a swap: a takes g (guaranteed) on entry and b on the back edge, b takes p (owned) on entry and a. Resolved together both are
+;; owned (a joins g with the owned b), so a mixes guaranteed g with an owned b. A resolve that gave a the kind of g alone (before b is known) finds b only.
+(defstruct hdr (i64 i32 i32))
+(defstruct box (%struct.hdr i64 (ptr 1)))
+(declare rt.retain void (ptr))
+(declare rt.release void (ptr))
+(declare rt.unique i1 (ptr))
+(declare rt.alloc ptr (i64 i32))
+(declare rt.stack-init void (ptr i32))
+(declare rt.stack-end void (ptr))
+(ownership (retain @rt.retain) (release @rt.release) (unique @rt.unique) (alloc @rt.alloc) (stack-init @rt.stack-init) (stack-end @rt.stack-end) (header %struct.hdr))
+(define (main i32) () (block entry (ret (i32 0))))
+(define (swap void) (((ptr 1) owned p) ((ptr 1) g) (i64 n))
+  (block entry (br again))
+  (block again
+    (let ((i (phi i64 (entry (i64 0)) (again j)))
+          (a (phi (ptr 1) (entry g) (again b)))
+          (b (phi (ptr 1) (entry p) (again a)))
+          (j (add i (i64 1))))
+      (br (icmp slt j n) again done)))
+  (block done (destroy-value a) (destroy-value b) (ret)))

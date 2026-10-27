@@ -70,13 +70,15 @@
    report: (Cell bool)
    errs: (Cell (Vec Diagnostic))
    ;; whether the function uses the managed type or a form at all
-   uses: (Cell bool)))
+   uses: (Cell bool)
+   ;; whether a join leaves out the entries not resolved yet (the resolve of a cycle of phis, lir.own.table)
+   optimistic: (Cell bool)))
 
 (defun own-new (f: LFunction env: LEnv cfg: Cfg labels: (Map str i64) stmts: (Vec (Vec LExpr)) binding: (Option LOwnership) mutables: (Set str)) -> LoCx
   (let ((no-vals: (Vec LoVal) (vec-empty)) (no-borrows: (Vec LoBorrow) (vec-empty)) (no-errs: (Vec Diagnostic) (vec-empty))
         (no-state: (Vec i64) (vec-empty)))
     (LoCx f env cfg labels stmts (. (. f mods) unsafe) binding mutables (cell no-vals) (cell {}) (cell {}) (cell no-borrows)
-         (cell no-state) (cell 0) (cell false) (cell no-errs) (cell false))))
+         (cell no-state) (cell 0) (cell false) (cell no-errs) (cell false) (cell false))))
 
 ;; ---------------------------------------------------------------- the table
 
