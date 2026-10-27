@@ -1,0 +1,9 @@
+;; expect: reject
+;; error: 7:53: error: unknown instruction k
+;; spec/lir.md 4.6: a library that memo-a.lir, memo-b.lir and memo-c.lir require after a library that defines k: the body of kval uses
+;; k, so it expands to (I64 2) in one module's session and (I64 3) in the other's; (forty) reads 40 as its module's readtable reads it.
+;; Run alone, no k is defined: the use is an unknown instruction.
+(DEFINE-MACRO kval ()
+  (BLOCK entry (RET (CALL (GLOBAL lir.sexp.integer) (k)))))
+(DEFINE-MACRO forty ()
+  (BLOCK entry (RET (CALL (GLOBAL lir.sexp.integer) (I64 40)))))

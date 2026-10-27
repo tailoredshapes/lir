@@ -29,11 +29,11 @@
                   ;; the program's ordinals and tables (spec/lir.md 4.7.1)
                   ords: ord/Ordinals
                   ;; the object files the program's macro sessions share (native.jit.objects), freed with the environments
-                  cache: objects/ObjCache))
+                  cache: mt/MacroCache))
 
 (defun state-new () -> State
   (State (cell []) (cell (set-empty)) (cell {}) (cell {}) (cell {}) (cell nil) (cell []) (cell nil) (ffi/ptr->addr (ffi/slot-new))
-         (ord/ordinals-new) (objects/cache-new)))
+         (ord/ordinals-new) (mt/MacroCache (objects/cache-new) (cell {}))))
 
 ;; ---------------------------------------------------------------- admission
 

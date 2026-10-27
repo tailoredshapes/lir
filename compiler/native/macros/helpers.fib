@@ -5,10 +5,11 @@
   (:use lir.diag lir.sexp lir.ast lir.types native.error native.macros.types)
   (:require [lir.parse.names :as names] [lir.words :as words] [native.call :as call] [native.macros.objects :as obj] [llvm.ffi :as ffi]))
 
-;; The environment of a file read for the module of `env` (a library, an included file): the file's own name, everything else the module's.
-(defun env-sub (env: Env path: str) -> Env
+;; The environment of a file read for the module of `env` (a library, an included file): the file's own name and text, everything else the
+;; module's.
+(defun env-sub (env: Env path: str text: str) -> Env
   (Env path (file-cstr path) (. env macros) (. env session) (. env loaded) (. env loading) (. env ns) (. env readers) (. env seq) (. env hook) (. env collected) (. env gensym)
-       (. env cache)))
+       (. env cache) text))
 
 ;; The file as the objects carry it: a C string that lives as long as they do, null for none.
 (defun file-cstr (file: str) -> ptr

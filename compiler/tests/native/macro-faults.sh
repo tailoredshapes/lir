@@ -1,6 +1,7 @@
 #!/bin/bash
-# The planted faults of a macro's module (spec/lir.md 4.6): what it declares (native.macros.declares) and the program's object files a
-# session adds it from (native.jit `session-add-module-cached`, native.jit.objects). lairf and unit-macro-declares.fib are built by the
+# The planted faults of a macro's module (spec/lir.md 4.6): what it declares (native.macros.declares), the program's object files a
+# session adds it from (native.jit `session-add-module-keyed`, native.jit.objects) and the program's memo of library forms
+# (native.macros.memo). lairf and unit-macro-declares.fib are built by the
 # seed as they are (the cases of cases/lir/macros and the unit must pass), then once per fault with one module changed in a shadow
 # directory that comes first on the module path; each fault must make a case of cases/lir/macros or the unit fail. A fault that does not
 # fail is a hole in the tests. Not in `make gate` (it builds lairf once per fault): run it after a change to those modules.
@@ -79,8 +80,12 @@ fault old-struct-not-stripped $D '(starts-with? a "%struct.") (conj (conj acc a)
 fault globals-not-declared $D '((ItDeclareGlobal g) (refer (add-symbol p (. g name) at) (. g ty)))' '((ItDeclareGlobal g) (refer p (. g ty)))'
 fault earlier-macros-not-declared $D '(vec (keep (fn (pr: (Pair i64 str)) (macro-item env s (- -1 (. pr fst)) (. pr snd))) macros))' '[]'
 fault symbols-not-mentioned $D '((SxAtom a _ _) (mention-text acc a))' '((SxAtom a _ _) acc)'
-fault cache-key-without-declarations $J '(key (print/print-module m))' '(key (print/print-module (LModule [(nth (. m items) (- (count (. m items)) 1))])))'
 fault cache-object-not-copied $J '(orc/add-object (. s lljit) (objects/buffer-copy buf))' '(orc/add-object (. s lljit) buf)'
+M=native/macros/memo.fib
+fault cache-key-without-declarations $M '(key (str (print/print-module (LModule decls)) (. d key)))' '(key (. d key))'
+fault memo-heads-ignored $M '(not (some? (first (filter (fn (h: str) (some? (get @(. env macros) h))) hs))))' 'true'
+fault memo-readtable-ignored $M '(if (or @(. (. (. env readers) table) active) (= sp 0)' '(if (or false (= sp 0)'
+fault memo-key-without-text $M '(some (str (sexp-pos form) " " (str-slice (. env text) (span-start sp) (span-end sp))))' '(some (str (sexp-pos form)))'
 wait
 
 for n in "${names[@]}"; do

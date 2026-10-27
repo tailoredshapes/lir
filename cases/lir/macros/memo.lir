@@ -1,0 +1,15 @@
+;; expect: accept
+;; out: 2 3 40 41
+;; spec/lir.md 4.6 and 4.8: a library's macro is expanded and compiled in each module that requires it, with that module's macros and read
+;; under that module's readtable. memo-a.lir, memo-b.lir and memo-c.lir require memo-lib.lir: the body of kval uses k, which memo-a.lir
+;; and memo-b.lir each have of their own library (2 and 3), and memo-c.lir reads the library under a token reader that reads 40 as 41.
+;; lair keeps a library's form for the next module that reads it only when the form reads and expands the same there
+;; (native.macros.memo): none may be taken from another.
+(DECLARE printf I32 (PTR ...))
+(IMPORT "memo-a.lir")
+(IMPORT "memo-b.lir")
+(IMPORT "memo-c.lir")
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%lld %lld %lld %lld\n") (CALL (GLOBAL a.k)) (CALL (GLOBAL b.k)) (CALL (GLOBAL a.forty)) (CALL (GLOBAL c.forty)))
+    (RET (I32 0))))

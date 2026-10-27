@@ -132,13 +132,13 @@
 (defun prunable? (p: Prune) -> bool
   (and (. p clean) (empty? (. p missing))))
 
-;; The declarations of the module of the macro defined by `def`: while the session is clean and nothing is missing, those `def` names,
-;; with every struct they name, through their types and the structs' fields; else all of them. Either way in the order of the module
-;; made of all of them: the library's, the earlier macros', the interfaces'.
-(defun module-declares (env: Env s: Session def: Sexp) -> (Vec LItem)
+;; The declarations of the module of a macro whose definition spells the names `ns` (`mentions`): while the session is clean and nothing
+;; is missing, those it names, with every struct they name, through their types and the structs' fields; else all of them. Either way in
+;; the order of the module made of all of them: the library's, the earlier macros', the interfaces'.
+(defun module-declares (env: Env s: Session ns: (Set str)) -> (Vec LItem)
   (let ((p @(. s prune)))
     (if (prunable? p)
-        (named env s p (mentions def))
+        (named env s p ns)
         (into (into (. s decls) (macro-declare-items env s)) @(. s iface)))))
 
 (defun named :private (env: Env s: Session p: Prune ns: (Set str)) -> (Vec LItem)

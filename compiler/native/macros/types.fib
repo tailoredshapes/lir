@@ -23,7 +23,7 @@
 ;; (native.macros.declares).
 (defstruct Session (jit: jit/JitSession take: i64 at: i64 set-hook: i64 readers: readers/Readers pending: (Cell (Option Diagnostic))
                     imported: (Cell (Map str (Vec LItem))) importing: (Cell (Set str)) iface: (Cell (Vec LItem)) decls: (Vec LItem)
-                    prune: (Cell Prune) cache: objects/ObjCache))
+                    prune: (Cell Prune) cache: MacroCache))
 
 ;; What a session knows of its declarations (`decls`, then `iface`) to give a macro's module only those its body names
 ;; (native.macros.declares): `symbols` and `structs` by name, each to its place in `decls` then `iface` (an earlier macro's function: -1 - K,
@@ -37,8 +37,8 @@
 ;; native.imports loads the module and defines its macros in the environment; the interface items are the loader's to keep. The macros
 ;; module knows nothing of modules: a text with no loader (a macro library) refuses the form. `gensym`: the address of the word the program's
 ;; gensym counter lives in (spec/lir.md 4.6), the loader's, which every module's session is given.
-;; `cache`: the program's object files (native.jit.objects), which every module's session adds from and to.
-(defstruct Importer (load: (fn (Env str i64) (Option Diagnostic)) gensym: i64 cache: objects/ObjCache))
+;; `cache`: the program's (`MacroCache`), which every module's session adds from and to.
+(defstruct Importer (load: (fn (Env str i64) (Option Diagnostic)) gensym: i64 cache: MacroCache))
 
 ;; A module read and expanded: its environment, kept open while another module may still use its macros, and its items.
 (defstruct Parsed (env: Env module: LModule))
@@ -49,12 +49,25 @@
 ;; an import neither takes from nor gives to it) and the count of reader macros compiled (each is a function of its own name in the session).
 ;; `hook`: the module macro `(module-macro NAME)` armed, with the direction's position; `collected`: the forms read since, for it, as objects
 ;; (each naming the file it was read from: an include met while the hook is armed contributes its file's forms); `gensym`:
-;; the program's gensym word (the importer's).
+;; the program's gensym word (the importer's); `cache` the program's; `text` the text of `file`, which the forms are read from.
 (defstruct Env (file: str cfile: ptr macros: (Cell (Map str Macro)) session: (Cell (Option Session)) loaded: (Cell (Set str)) loading: (Cell (Set str)) ns: (Cell i64)
                 readers: readers/Readers seq: (Cell i64) hook: (Cell (Option (Pair Macro i64))) collected: (Cell (Vec i64)) gensym: i64
-                cache: objects/ObjCache))
+                cache: MacroCache text: str))
 
 (defstruct Params (names: (Vec str) rest: bool))
+
+;; A macro's function as its module has it: the definition parsed, the names its body spells (native.macros.declares `mentions`), and its
+;; text as lir.print writes it, the definition's part of the module's key in the program's objects.
+(defstruct Def (item: LItem mentions: (Set str) key: str))
+
+;; A `define-macro` of a library whose blocks name no macro of the module that required it, so that their expansion is the blocks as they
+;; were read (native.macros.memo): what its compile needs that does not depend on the module, kept by the program for the next module that
+;; reads the same form; `heads` the words its lists start with, which must name no macro of that module either.
+(defstruct FormMemo (heads: (Vec str) params: Params def: Def))
+
+;; What a program's macro sessions share: the object files (native.jit.objects) and the library forms read before (`FormMemo`, by
+;; native.macros.memo `memo-key`), made by the loader with the program and freed with it.
+(defstruct MacroCache (objects: objects/ObjCache forms: (Cell (Map str FormMemo))))
 
 (def max-params: i64 8)
 

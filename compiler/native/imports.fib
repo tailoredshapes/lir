@@ -38,7 +38,7 @@
   (let ((st (state-new)) (im (imports-new)) (t0 (timing/started)))
     (let ((r (load-main st im src file)))
       (do (doseq [e @(. st envs)] (macros/env-close e))
-          (objects/cache-free (. st cache))
+          (objects/cache-free (. (. st cache) objects))
           (ffi/free-addr (. st gensym))
           (timing/report "lir.imports.load-program" t0)
           r))))

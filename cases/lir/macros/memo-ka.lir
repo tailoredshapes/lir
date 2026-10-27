@@ -1,0 +1,9 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6: a library of memo-a.lir: (k) is (I64 2); run alone it has no main.
+(DEFINE-MACRO k ()
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.integer) (I64 2)))
+      (RET l))))

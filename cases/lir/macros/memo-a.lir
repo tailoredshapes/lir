@@ -1,0 +1,8 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6: a module memo.lir imports: (k) of memo-ka.lir, then memo-lib.lir read with no reader macro; run alone it is no
+;; program.
+(REQUIRE-MACROS "memo-ka.lir")
+(REQUIRE-MACROS "memo-lib.lir")
+(DEFINE (a.k I64) () (BLOCK entry (RET (I64 (kval)))))
+(DEFINE (a.forty I64) () (BLOCK entry (RET (I64 (forty)))))

@@ -3,7 +3,7 @@
 ;; libraries the module requires compiled again: the same modules, compiled once per session. A program keeps here the object file of each
 ;; module it compiled, by a key that determines the module (its text), and a session that adds a module of a key the program has compiled
 ;; adds the object instead: ORC links it into the session, its globals the session's own, and nothing is checked, lowered or generated
-;; again (native.jit `session-add-module-cached`). The objects are made by one target machine, the host's at the level the sessions
+;; again (native.jit `session-add-module-keyed`). The objects are made by one target machine, the host's at the level the sessions
 ;; generate code at (native.jit `session-new-fast-codegen`), the program's, freed with it (`cache-free`). No state outside the program:
 ;; the loader makes the cache and passes it down (ADR 0013).
 (ns native.jit.objects

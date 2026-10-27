@@ -9,7 +9,7 @@
   (:use lir.diag lir.types lir.lit lir.ast native.error native.jit.names native.jit.prune native.jit.trampoline)
   (:require [lir.check :as check] [lir :as front] [native.lower :as nl] [native.owned :as owned] [native.passes :as passes]
             [native.target :as target] [llvm.orc :as orc] [llvm.support :as support] [native.libraries :as libraries]
-            [native.jit.objects :as objects] [lir.print :as print]))
+            [native.jit.objects :as objects]))
 
 
 (defstruct JitSession
@@ -133,19 +133,18 @@
                    ((Err ds) (Err (ErrInvalid ds)))
                    ((Ok m) (compile-object s c key name m)))))))))
 
-;; As `session-add-module`, through the cache `c`: a module whose text (lir.print, which reads back as the module) was compiled before in
-;; the program is added as that object, without checking, lowering or generating it again (the checker's verdict on a text and the code
-;; of it are the text's); the libraries, the names rules and the target are the session's and are applied to it as to any module.
-(defun session-add-module-cached (s: JitSession c: objects/ObjCache name: str m: LModule) -> (Result unit LairError)
-  (let ((t0 (sys-clock-now)) (key (print/print-module m)))
-    (do (session-note s "jit.cache-key" t0)
-        (match (objects/cache-get c key)
-          ((some o) (add-object s name m (. o buffer)))
-          (nil (let ((t1 (sys-clock-now)) (r (check/check m)))
-                 (do (session-note s "jit.check" t1)
-                     (match r
-                       ((Err ds) (Err (ErrInvalid ds)))
-                       ((Ok _) (compile-object s c key name m))))))))))
+;; As `session-add-module`, through the cache `c`: a module whose text `key` (lir.print's of `m`, which reads back as the module, made by the
+;; caller) was compiled before in the program is added as that object, without checking, lowering or generating it again (the checker's
+;; verdict on a text and the code of it are the text's); the libraries, the names rules and the target are the session's and are applied
+;; to it as to any module.
+(defun session-add-module-keyed (s: JitSession c: objects/ObjCache key: str name: str m: LModule) -> (Result unit LairError)
+  (match (objects/cache-get c key)
+    ((some o) (add-object s name m (. o buffer)))
+    (nil (let ((t1 (sys-clock-now)) (r (check/check m)))
+           (do (session-note s "jit.check" t1)
+               (match r
+                 ((Err ds) (Err (ErrInvalid ds)))
+                 ((Ok _) (compile-object s c key name m))))))))
 
 ;; The libraries, the names rules and the target of a module about to join the session (`add-checked`'s first steps).
 (defun admit :private (s: JitSession m: LModule) -> (Result unit LairError)

@@ -1,0 +1,11 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6 and 4.8: a module memo.lir imports: (k) of memo-kb.lir, and a token reader that reads the atom 40 as 41, then
+;; memo-lib.lir read under it; run alone it is no program.
+(REQUIRE-MACROS "memo-kb.lir")
+(DEFINE-TOKEN-READER (s tok)
+  (BLOCK entry (BR (CALL (GLOBAL lir.sexp.is) tok (STRING "40")) forty other))
+  (BLOCK forty (RET (CALL (GLOBAL lir.sexp.symbol) (STRING "41"))))
+  (BLOCK other (RET tok)))
+(REQUIRE-MACROS "memo-lib.lir")
+(DEFINE (c.forty I64) () (BLOCK entry (RET (I64 (forty)))))
