@@ -5,10 +5,11 @@
   (:use lir.diag lir.sexp lir.ast lir.types)
   (:require [native.jit :as jit] [native.jit.objects :as objects] [native.call :as call] [native.macros.readers :as readers]))
 
-;; A defined macro: its entry, a ccc function of `fixed` ptr parameters and one more for the rest when `rest`; the file it was defined in
-;; (an imported module exports the macros of its own file, spec/lir.md 4.7); and the two entries of the session it lives in, which the runner
-;; calls when it returns null (`lir.sexp.failure-take`, `lir.sexp.failure-at`): a macro of an imported module runs in that module's session.
-(defstruct Macro (name: str entry: i64 fixed: i64 rest: bool file: str take: i64 at: i64 session: Session))
+;; A defined macro: its entry, a ccc function of `fixed` ptr parameters and one more for the rest when `rest` (0 until the macro is first
+;; used: native.macros `macro-entry`); the file it was defined in (an imported module exports the macros of its own file, spec/lir.md 4.7);
+;; and the two entries of the session it lives in, which the runner calls when it returns null (`lir.sexp.failure-take`,
+;; `lir.sexp.failure-at`): a macro of an imported module runs in that module's session.
+(defstruct Macro (name: str entry: (Cell i64) fixed: i64 rest: bool file: str take: i64 at: i64 session: Session))
 
 ;; The macro session of a module, made at its first `define-macro` and freed when the program is parsed (`env-close`): the library's two
 ;; entries the runner calls.

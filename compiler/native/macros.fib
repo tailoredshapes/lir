@@ -172,15 +172,24 @@
 ;; nested on the worker inside the hook; one count of runs for the worker, the readers', whichever kind of macro runs.
 (defun run-entry :private (env: Env m: Macro args: (Vec i64) pos: i64) -> (Result i64 Diagnostic)
   (let ((s (. m session)) (rs (. s readers)))
-    (try-let ((mb (str-err (readers/mailbox-of rs) m pos)))
+    (try-let ((mb (str-err (readers/mailbox-of rs) m pos))
+              (entry (macro-entry m pos)))
       (let ((nested (> @(. rs running) 0)))
         (do (set! (. rs running) (+ @(. rs running) 1))
-            (let ((r (try-let ((_ (str-err (if nested (call/call-nest mb (. m entry) args) (call/call-start mb (. m entry) args)) m pos)))
+            (let ((r (try-let ((_ (str-err (if nested (call/call-nest mb entry args) (call/call-start mb entry args)) m pos)))
                        (serve env s mb m pos))))
               (do (set! (. rs running) (- @(. rs running) 1))
                   (match @(. s pending)
                     ((some d2) (do (set! (. s pending) nil) (Err d2)))
                     (nil r)))))))))
+
+;; The address of the macro's function, looked up in its session when the macro is first used (ORC links its object then).
+(defun macro-entry :private (m: Macro pos: i64) -> (Result i64 Diagnostic)
+  (if (= @(. m entry) 0)
+      (match (jit/session-address (. (. m session) jit) (str "lir.macro." (. m name)))
+        ((Err e) (Err (module-error (str "macro " (. m name)) e pos)))
+        ((Ok a) (do (set! (. m entry) a) (Ok a))))
+      (Ok @(. m entry))))
 
 ;; Answers the hooks until the call (or the nested call) returns: a hook of arity 1 is `lir.sexp.expand`.
 (defun serve :private (env: Env s: Session mb: call/Mailbox m: Macro pos: i64) -> (Result i64 Diagnostic)
@@ -262,18 +271,19 @@
 ;; Compiles the macro into the session and records it.
 (defun compile-macro :private (env: Env name: str ps: Params blocks: (Vec Sexp) pos: i64) -> (Result unit Diagnostic)
   (try-let ((s (match (session-of env) ((Err e) (err pos (str "macro " name ": " e))) ((Ok s) (Ok s))))
-            (entry (compile-entry env s (str "macro " name) (str "lir.macro." name) ps blocks pos)))
-    (do (set! (. env macros) (assoc @(. env macros) name (Macro name entry (- (count (. ps names)) (if (. ps rest) 1 0)) (. ps rest) (. env file) (. s take) (. s at) s)))
+            (_ (compile-entry env s (str "macro " name) (str "lir.macro." name) ps blocks pos false)))
+    (do (set! (. env macros) (assoc @(. env macros) name (Macro name (cell 0) (- (count (. ps names)) (if (. ps rest) 1 0)) (. ps rest) (. env file) (. s take) (. s at) s)))
         (set! (. s prune) (decl/prune-macro @(. s prune) name))
         (Ok ()))))
 
-;; The function `fname` of parameters `ps` and body `blocks` compiled into the session `s`: its address. Errors carry `what` (`macro NAME`,
+;; The function `fname` of parameters `ps` and body `blocks` compiled into the session `s`, and its address when `look` (else 0: a macro's
+;; is looked up when it is first used, `macro-entry`, so that ORC links only the macros a module uses). Errors carry `what` (`macro NAME`,
 ;; `reader macro [`).
-(defun compile-entry :private (env: Env s: Session what: str fname: str ps: Params blocks: (Vec Sexp) pos: i64) -> (Result i64 Diagnostic)
+(defun compile-entry :private (env: Env s: Session what: str fname: str ps: Params blocks: (Vec Sexp) pos: i64 look: bool) -> (Result i64 Diagnostic)
   (let ((t0 (sys-clock-now)))
     (try-let ((m (macro-module env s (macro-define fname ps blocks pos)))
               (_ (match (jit/session-add-module-cached (. s jit) (. s cache) (str "macro." fname) m) ((Err e) (Err (module-error what e pos))) ((Ok _) (Ok ()))))
-              (entry (match (jit/session-address (. s jit) fname) ((Err e) (Err (module-error what e pos))) ((Ok a) (Ok a)))))
+              (entry (if look (match (jit/session-address (. s jit) fname) ((Err e) (Err (module-error what e pos))) ((Ok a) (Ok a))) (Ok 0))))
       (do (set! (. env ns) (+ @(. env ns) (- (sys-clock-now) t0)))
           (jit/session-note (. s jit) "compile-entry" t0)
           (Ok entry)))))
@@ -287,7 +297,7 @@
   (match (try-let ((d (rf/parse-reader head form (. env seq)))
                    (blocks (expand-all env (. d blocks)))
                    (s (match (session-of env) ((Err e) (err (. d pos) (str (. d what) ": " e))) ((Ok s) (Ok s))))
-                   (entry (compile-entry env s (. d what) (. d fname) (Params (. d names) false) blocks (. d pos))))
+                   (entry (compile-entry env s (. d what) (. d fname) (Params (. d names) false) blocks (. d pos) true)))
            (Ok (rf/bind! (. (. env readers) table) d entry)))
     ((Err d) (some d))
     ((Ok _) nil)))
