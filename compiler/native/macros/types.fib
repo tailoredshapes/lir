@@ -20,10 +20,10 @@
 ;; use's error.
 ;; `imported`: the macro-imported modules by canonical path with their interface items; `importing`: those being compiled (a cycle);
 ;; `iface`: every interface, declared in the macro bodies compiled after; `decls`: the library's and the stream's declarations, parsed once
-;; (native.macros.declares).
+;; (native.macros.declares). `ownership`: the file whose `ownership` form the session's program has (spec/lir.md 4.6, 6.14.6), one as in any program.
 (defstruct Session (jit: jit/JitSession take: i64 at: i64 set-hook: i64 readers: readers/Readers pending: (Cell (Option Diagnostic))
                     imported: (Cell (Map str (Vec LItem))) importing: (Cell (Set str)) iface: (Cell (Vec LItem)) decls: (Vec LItem)
-                    prune: (Cell Prune) cache: MacroCache))
+                    prune: (Cell Prune) cache: MacroCache ownership: (Cell (Option str))))
 
 ;; What a session knows of its declarations (`decls`, then `iface`) to give a macro's module only those its body names
 ;; (native.macros.declares): `symbols` and `structs` by name, each to its place in `decls` then `iface` (an earlier macro's function: -1 - K,

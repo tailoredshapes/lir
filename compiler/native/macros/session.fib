@@ -25,7 +25,7 @@
             (mb (readers/mailbox-of rs))
             (_ (call/call-i64 set-hook [(. (call/hook-addresses) one) (. mb handle)]))
             (decls (match (decl/library-declares) ((Err d) (Err (diag-str d))) ((Ok v) (Ok v)))))
-    (Ok (Session j take at set-hook rs (cell nil) (cell (map-empty)) (cell (set-empty)) (cell []) decls (cell (decl/prune-new decls)) c))))
+    (Ok (Session j take at set-hook rs (cell nil) (cell (map-empty)) (cell (set-empty)) (cell []) decls (cell (decl/prune-new decls)) c (cell nil)))))
 
 ;; FIB_TIME: the session's phases, one line each, `time lir.macros.PHASE N ms` (the session's own and its JIT's).
 (defun report-phases (s: Session) -> unit

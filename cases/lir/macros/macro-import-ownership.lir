@@ -1,0 +1,21 @@
+;; expect: accept
+;; out: 7 100
+;; spec/lir.md 4.6, 4.7, 6.14.6: a module macro-imported into the macro session that imports the module which holds the ownership form uses
+;; the forms without one of its own, as an imported module of a program does (accept-import-binding.lir): macro-own-x.lir and macro-own-y.lir
+;; both import macro-own-rt.lir, which carries the session's form in its interface. Each macro runs the module's managed code (an alloc-object and
+;; a destroy-value, erased to the runtime's alloc and release): `rt.alive` is 0 after the release, so x.f is 7 + 0.
+(MACRO-IMPORT "macro-own-x.lir")
+(MACRO-IMPORT "macro-own-y.lir")
+(DECLARE printf I32 (PTR ...))
+(DEFINE-MACRO lit64 (v)
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l v)
+      (RET l))))
+(DEFINE-MACRO ran-x () (BLOCK entry (RET (CALL (GLOBAL lir.macro.lit64) (CALL (GLOBAL lir.sexp.integer) (CALL (GLOBAL x.f)))))))
+(DEFINE-MACRO ran-y () (BLOCK entry (RET (CALL (GLOBAL lir.macro.lit64) (CALL (GLOBAL lir.sexp.integer) (CALL (GLOBAL y.f)))))))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%lld %lld\n") (ran-x) (ran-y))
+    (RET (I32 0))))

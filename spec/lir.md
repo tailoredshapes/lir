@@ -525,7 +525,13 @@ macro-imported into the session the same way, their interfaces its declarations)
 `macro-import: FILE:L:C: error: ..` at the direction; a module that imports itself through others is `macro-import: FILE imports itself`.
 Its globals are the session's state for the module's expansion: written by one macro run, read by the next of the same module, gone with
 the session at the end of the module (`cases/lir/macros/macro-import.lir`); a macro of an imported module runs in its own module's session
-(§4.7) and sees that module's, and an importer never sees them. So a type checker is ordinary runtime lIR that thin macros call. The three
+(§4.7) and sees that module's, and an importer never sees them. So a type checker is ordinary runtime lIR that thin macros call. The session is a program (§4.7): the modules macro-imported into it are
+its modules, joined as imports join them, so it has one `ownership` form (§6.14.6). A macro-imported module's interface carries its
+`ownership` form, as an import's does (§4.7), so a module that imports the runtime holding the form uses the forms without writing one
+(`cases/lir/macros/macro-import-ownership.lir`); a second module of the session that writes one, beside the first, is `ownership: FILE also
+has an ownership form`, FILE the module that holds the first, at the second form (`reject-macro-import-ownership-twice.lir`), reported as every
+error of a macro-imported module is. The bodies of the session's macros get the declarations of the
+interfaces but not the form: a macro's body holds no managed value. The three
 directions that bring a file: `require-macros` brings macros (and reader macros) to the module's text; `import` (§4.7) brings a module into
 the program and its interface to the importer; `macro-import` brings a module into the macro session only: it is neither linked into the
 program nor exported, and a library may hold it beside `define-macro`.

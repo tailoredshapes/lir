@@ -1,0 +1,15 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6, 4.7, 6.14.6: a runtime module that macro-import-ownership.lir macro-imports: it writes no ownership form, the interface of
+;; macro-own-rt.lir brings the session's, and it allocates and destroys a managed object. `x.make` has a managed result, so its interface does too.
+(IMPORT "macro-own-rt.lir")
+(DEFINE (x.make (PTR (ADDRSPACE 1))) ()
+  (BLOCK entry
+    (LET ((o (ALLOC-OBJECT (STRUCT box) (I32 16))))
+      (STORE INIT ((PTR (ADDRSPACE 1)) NULL) (GETELEMENTPTR (STRUCT box) o (I32 0) (I32 2)))
+      (RET o))))
+(DEFINE (x.f I64) ()
+  (BLOCK entry
+    (LET ((o (CALL (GLOBAL x.make))))
+      (DESTROY-VALUE o)
+      (RET (ADD (I64 7) (CALL (GLOBAL rt.alive)))))))

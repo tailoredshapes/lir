@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 5:1: error: ownership: cases/lir/macros/macro-own-rt.lir also has an ownership form
+;; spec/lir.md 4.6, 4.7, 6.14.6: a module that writes an ownership form beside the one it imports (reject-macro-import-ownership-twice.lir); run alone it is refused as any program is.
+(IMPORT "macro-own-rt.lir")
+(OWNERSHIP (RETAIN (GLOBAL rt.retain)) (RELEASE (GLOBAL rt.release)) (UNIQUE (GLOBAL rt.unique)) (ALLOC (GLOBAL rt.alloc))
+           (STACK-INIT (GLOBAL rt.stack-init)) (STACK-END (GLOBAL rt.stack-end)) (HEADER (STRUCT hdr)))

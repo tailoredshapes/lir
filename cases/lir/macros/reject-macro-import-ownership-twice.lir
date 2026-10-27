@@ -1,0 +1,7 @@
+;; expect: reject
+;; error: macro-import: cases/lir/macros/macro-own-twice.lir:5:1: error: ownership: cases/lir/macros/macro-own-rt.lir also has an ownership form
+;; spec/lir.md 4.6, 4.7, 6.14.6: a macro session is a program and has one ownership form: a macro-imported module that writes a second one,
+;; beside the form of the runtime it imports, is refused as it is in a program (cases/lir/own/reject-import-ownership-twice.lir).
+(DECLARE printf I32 (PTR ...))
+(MACRO-IMPORT "macro-own-twice.lir")
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))

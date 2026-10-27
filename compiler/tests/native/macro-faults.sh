@@ -1,5 +1,6 @@
 #!/bin/bash
-# The planted faults of a macro's module (spec/lir.md 4.6): what it declares (native.macros.declares), the program's object files a
+# The planted faults of a macro's module (spec/lir.md 4.6): the ownership form of a macro-imported module, its erasure and the files of
+# lir.sexp.expand's results (native.macros, native.macros.helpers, lir.own.erase), what it declares (native.macros.declares), the program's object files a
 # session adds it from (native.jit `session-add-module-keyed`, native.jit.objects) and the program's memo of library forms
 # (native.macros.memo). lairf and unit-macro-declares.fib are built by the
 # seed as they are (the cases of cases/lir/macros, the unit and compiler/tests/native/macro-store.sh must pass), then once per fault with one
@@ -90,6 +91,9 @@ fault cache-key-without-declarations $M '(key (str (print/print-module (LModule 
 fault memo-heads-ignored $M '(not (some? (first (filter (fn (h: str) (some? (get @(. env macros) h))) hs))))' 'true'
 fault memo-readtable-ignored $M '(if (or @(. (. (. env readers) table) active) (= sp 0)' '(if (or false (= sp 0)'
 fault memo-key-without-text $M '(some (str (sexp-pos form) " " (str-slice (. env text) (span-start sp) (span-end sp))))' '(some (str (sexp-pos form)))'
+H=native/macros/helpers.fib
+fault ownership-not-in-interface $H '((ItOwnership _) (conj out (nth (. m items) i)))' '((ItOwnership _) out)'
+fault session-ownership-twice-accepted $H '((some other) (some (Diagnostic (. o pos) (str "ownership: " other " also has an ownership form"))))' '((some other) nil)'
 wait
 
 for n in "${names[@]}"; do

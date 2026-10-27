@@ -1,0 +1,48 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6, 4.7, 6.14.6: the runtime of the macro-import-ownership cases: the module that carries the session's ownership form, and
+;; the counter of the objects alive (`rt.live`), which tells a case whether the release of an erased destroy-value ran. Run alone it is no program.
+(DECLARE malloc PTR (I64))
+(DECLARE free VOID (PTR))
+(DEFSTRUCT hdr (I64 I32 I32))
+(DEFSTRUCT box ((STRUCT hdr) I64 (PTR (ADDRSPACE 1))))
+(GLOBAL rt.live I64 (I64 0))
+(OWNERSHIP (RETAIN (GLOBAL rt.retain)) (RELEASE (GLOBAL rt.release)) (UNIQUE (GLOBAL rt.unique)) (ALLOC (GLOBAL rt.alloc))
+           (STACK-INIT (GLOBAL rt.stack-init)) (STACK-END (GLOBAL rt.stack-end)) (HEADER (STRUCT hdr)))
+(DEFINE UNSAFE (rt.alloc PTR) ((I64 size) (I32 tid))
+  (BLOCK entry
+    (LET ((p (CALL (GLOBAL malloc) size)))
+      (STORE (I64 1) (GETELEMENTPTR (STRUCT hdr) p (I32 0) (I32 0)))
+      (STORE tid (GETELEMENTPTR (STRUCT hdr) p (I32 0) (I32 1)))
+      (STORE (I32 0) (GETELEMENTPTR (STRUCT hdr) p (I32 0) (I32 2)))
+      (STORE (ADD (LOAD I64 (GLOBAL rt.live)) (I64 1)) (GLOBAL rt.live))
+      (RET p))))
+(DEFINE UNSAFE (rt.retain VOID) ((PTR p))
+  (BLOCK entry (BR (ICMP EQ p (PTR NULL)) done inc))
+  (BLOCK inc
+    (LET ((c (GETELEMENTPTR (STRUCT hdr) p (I32 0) (I32 0))))
+      (STORE (ADD (LOAD I64 c) (I64 1)) c)
+      (RET)))
+  (BLOCK done (RET)))
+(DEFINE UNSAFE (rt.release VOID) ((PTR p))
+  (BLOCK entry (BR (ICMP EQ p (PTR NULL)) done dec))
+  (BLOCK dec
+    (LET ((c (GETELEMENTPTR (STRUCT hdr) p (I32 0) (I32 0)))
+          (n (SUB (LOAD I64 c) (I64 1))))
+      (STORE n c)
+      (BR (ICMP EQ n (I64 0)) gone done)))
+  (BLOCK gone
+    (STORE (SUB (LOAD I64 (GLOBAL rt.live)) (I64 1)) (GLOBAL rt.live))
+    (CALL (GLOBAL free) p)
+    (RET))
+  (BLOCK done (RET)))
+(DEFINE UNSAFE (rt.unique I1) ((PTR p))
+  (BLOCK entry (RET (ICMP EQ (LOAD I64 (GETELEMENTPTR (STRUCT hdr) p (I32 0) (I32 0))) (I64 1)))))
+(DEFINE UNSAFE (rt.stack-init VOID) ((PTR p) (I32 tid))
+  (BLOCK entry
+    (STORE (I64 0) (GETELEMENTPTR (STRUCT hdr) p (I32 0) (I32 0)))
+    (STORE tid (GETELEMENTPTR (STRUCT hdr) p (I32 0) (I32 1)))
+    (STORE (I32 4) (GETELEMENTPTR (STRUCT hdr) p (I32 0) (I32 2)))
+    (RET)))
+(DEFINE UNSAFE (rt.stack-end VOID) ((PTR p)) (BLOCK entry (RET)))
+(DEFINE (rt.alive I64) () (BLOCK entry (RET (LOAD I64 (GLOBAL rt.live)))))

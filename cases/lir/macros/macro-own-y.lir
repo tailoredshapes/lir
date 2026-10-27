@@ -1,0 +1,11 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6, 4.7: a second module that imports macro-own-rt.lir, beside macro-own-x.lir: the runtime is one module of the session, and
+;; its ownership form is the session's one, not a second.
+(IMPORT "macro-own-rt.lir")
+(DEFINE (y.f I64) ()
+  (BLOCK entry
+    (LET ((o (ALLOC-OBJECT (STRUCT box) (I32 17))))
+      (STORE INIT ((PTR (ADDRSPACE 1)) NULL) (GETELEMENTPTR (STRUCT box) o (I32 0) (I32 2)))
+      (DESTROY-VALUE o)
+      (RET (I64 100)))))

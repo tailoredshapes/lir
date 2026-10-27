@@ -407,15 +407,20 @@
               (match r
                 ((Err d) (err pos (str "macro-import: " path ":" (diag-str d))))
                 ((Ok p) (do (env-close (. p env))
-                            (session-add-import s path key (LModule (into @deps (. (. p module) items))) (interface-items (. p module)) pos)))))))))
+                            (match (session-ownership s path (. (. p module) items))
+                              ((some d) (err pos (str "macro-import: " path ":" (diag-str d))))
+                              (nil (session-add-import s path key (LModule (into @deps (. (. p module) items))) (interface-items (. p module)) pos)))))))))))
 
+;; The module added to the session as one of the program; its interface (with the `ownership` form, which an importer takes) is kept for the
+;; modules that import it, and the macros' bodies get the declarations of it (a macro's module has no form of its own to check them under).
 (defun session-add-import :private (s: Session path: str key: str m: LModule iface: (Vec LItem) pos: i64) -> (Result (Vec LItem) Diagnostic)
   (match (jit/session-add-module-keyed (. s jit) (. (. s cache) objects) (print/print-module m) (str "macro-import." path) m)
     ((Err e) (Err (module-error (str "macro-import " path) e pos)))
-    ((Ok _) (do (set! (. s imported) (assoc @(. s imported) key iface))
-                (set! (. s prune) (decl/prune-add @(. s prune) (+ (count (. s decls)) (count @(. s iface))) iface))
-                (set! (. s iface) (into @(. s iface) iface))
-                (Ok iface)))))
+    ((Ok _) (let ((decls (filterv (fn (it: LItem) (match it ((ItOwnership _) false) (_ true))) iface)))
+              (do (set! (. s imported) (assoc @(. s imported) key iface))
+                  (set! (. s prune) (decl/prune-add @(. s prune) (+ (count (. s decls)) (count @(. s iface))) decls))
+                  (set! (. s iface) (into @(. s iface) decls))
+                  (Ok iface))))))
 
 ;; ---------------------------------------------------------------- module-macro (spec/lir.md 4.6)
 

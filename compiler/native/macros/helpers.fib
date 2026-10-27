@@ -119,7 +119,8 @@
             (let ((s (ffi/c-string-at r)))
               (do (ffi/free-addr r) s))))))
 
-;; What a module shows to what imports it into the session: its structs, and its external defines and globals as declarations.
+;; What a module shows to what imports it into the session: its structs, its external defines and globals as declarations, and its `ownership`
+;; form if it has one (spec/lir.md 4.7, 6.14.6), which the importer takes as it would take the program's.
 (defun interface-items (m: LModule) -> (Vec LItem)
   (loop ((i 0) (out []))
     (if (>= i (count (. m items)))
@@ -133,4 +134,15 @@
                  ((ItGlobal g) (if (linkage-exported? (. (. g mods) linkage))
                                    (conj out (ItDeclareGlobal (LGlobalDecl (. g name) (. g ty) (. (. g mods) hidden) (. g pos))))
                                    out))
+                 ((ItOwnership _) (conj out (nth (. m items) i)))
                  (_ out))))))
+
+;; The session is a program (spec/lir.md 4.6) and has one `ownership` form (6.14.6): the module that writes one is its holder, and a second
+;; module that writes one, beside the first, is `ownership: FILE also has an ownership form` at its form, FILE the holder's file.
+(defun session-ownership (s: Session path: str items: (Vec LItem)) -> (Option Diagnostic)
+  (match (first (filter (fn (it: LItem) (match it ((ItOwnership _) true) (_ false))) items))
+    ((some (ItOwnership o))
+     (match @(. s ownership)
+       ((some other) (some (Diagnostic (. o pos) (str "ownership: " other " also has an ownership form"))))
+       (nil (do (set! (. s ownership) (some path)) nil))))
+    (_ nil)))
