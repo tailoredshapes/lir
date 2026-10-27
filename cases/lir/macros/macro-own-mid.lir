@@ -1,0 +1,7 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6, 6.14.7: a module macro-imported two imports from the runtime that holds the ownership form. It imports macro-own-x.lir
+;; alone, so it has no form and no managed code; the interface of x brings `x.make`, a declaration with a managed result, which erasure
+;; turns into a `ptr` for every module compiled into the session, however deep.
+(IMPORT "macro-own-x.lir")
+(DEFINE (mid.f I64) () (BLOCK entry (RET (ADD (CALL (GLOBAL x.f)) (I64 30)))))

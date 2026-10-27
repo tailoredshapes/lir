@@ -1,0 +1,17 @@
+;; expect: accept
+;; out: 37
+;; spec/lir.md 4.6, 6.14.7: every module compiled into a macro session is erased, however deep its imports: macro-own-mid.lir imports
+;; macro-own-x.lir, which imports the runtime, and holds no ownership form of its own while a declaration its import brought has a managed
+;; type (before: `internal error: (ptr 1) reached the lowering unerased`). The macro calls mid.f, which calls x.f (7) and adds 30.
+(MACRO-IMPORT "macro-own-mid.lir")
+(DECLARE printf I32 (PTR ...))
+(DEFINE-MACRO deep ()
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.integer) (CALL (GLOBAL mid.f))))
+      (RET l))))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%lld\n") (deep))
+    (RET (I32 0))))

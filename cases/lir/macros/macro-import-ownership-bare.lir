@@ -1,0 +1,17 @@
+;; expect: accept
+;; out: alive 0
+;; spec/lir.md 4.6, 6.14.7: a module macro-imported that only imports the runtime holding the ownership form is compiled into the session erased
+;; (before: `internal error: (ptr 1) reached the lowering unerased`, because the struct `box` of the runtime has a managed field and the
+;; module, without the form, was not erased). The macro calls rt.alive, a function of the runtime the bare module imports.
+(MACRO-IMPORT "macro-own-bare.lir")
+(DECLARE printf I32 (PTR ...))
+(DEFINE-MACRO alive ()
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.integer) (CALL (GLOBAL rt.alive))))
+      (RET l))))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "alive %lld\n") (alive))
+    (RET (I32 0))))

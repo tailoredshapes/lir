@@ -193,11 +193,23 @@
 (defun struct-table (m: LModule) -> (Map str (Vec LType))
   (reduce (fn (acc: (Map str (Vec LType)) it: LItem) (match it ((ItStruct s) (assoc acc (. s name) (. s fields))) (_ acc))) {} (. m items)))
 
-;; The module erased for a target whose pointers are `pb` bytes; a module without an `ownership` form has nothing to erase (the checker
-;; refuses one that uses the managed type without the form) and is returned as it is.
+;; A module without an `ownership` form has no runtime to erase the forms to, and the checker refuses one whose functions use the managed
+;; type (the verifier's first rule); but the managed type can still be written in what an import's interface brought into it, a struct
+;; with a managed field, a declaration, a global (spec/lir.md 4.7: an importer sees the structs and the declarations of what it imports,
+;; and a program joins its modules under one form; a macro session lowers each of its modules on its own, 4.6). Those types are erased,
+;; the rest of the module is left as it is.
+(defun erase-bare-item :private (it: LItem) -> LItem
+  (match it
+    ((ItStruct s) (ItStruct (with s (fields (mapv erase-type (. s fields))))))
+    ((ItGlobal g) (ItGlobal (with g (ty (erase-type (. g ty))))))
+    ((ItDeclareGlobal g) (ItDeclareGlobal (with g (ty (erase-type (. g ty))))))
+    ((ItDeclare d) (ItDeclare (with d (ty (erase-fn-type (. d ty))))))
+    (_ it)))
+
+;; The module erased for a target whose pointers are `pb` bytes.
 (defun erase-module (m: LModule pb: i64) -> LModule
   (match (module-ownership m)
-    (nil m)
+    (nil (LModule (mapv erase-bare-item (. m items))))
     ((some o)
      (let ((structs (struct-table m)))
        (LModule (reduce (fn (acc: (Vec LItem) it: LItem) (match (erase-item o structs pb it) ((some x) (conj acc x)) (nil acc)))

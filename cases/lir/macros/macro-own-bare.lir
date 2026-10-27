@@ -1,0 +1,5 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6, 6.14.7: a module that is nothing but an import of the runtime (macro-import-ownership-bare.lir): the structs of the runtime
+;; with a managed field are in its interface, and it is compiled into the macro session as a module of its own.
+(IMPORT "macro-own-rt.lir")

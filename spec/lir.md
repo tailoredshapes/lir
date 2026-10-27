@@ -530,7 +530,8 @@ its modules, joined as imports join them, so it has one `ownership` form (§6.14
 `ownership` form, as an import's does (§4.7), so a module that imports the runtime holding the form uses the forms without writing one
 (`cases/lir/macros/macro-import-ownership.lir`); a second module of the session that writes one, beside the first, is `ownership: FILE also
 has an ownership form`, FILE the module that holds the first, at the second form (`reject-macro-import-ownership-twice.lir`), reported as every
-error of a macro-imported module is. The bodies of the session's macros get the declarations of the
+error of a macro-imported module is. Each module of the session is checked, lowered and erased (§6.14.7) on its own, however deep its imports
+(`macro-import-ownership-deep.lir`, `macro-import-ownership-bare.lir`). The bodies of the session's macros get the declarations of the
 interfaces but not the form: a macro's body holds no managed value. The three
 directions that bring a file: `require-macros` brings macros (and reader macros) to the module's text; `import` (§4.7) brings a module into
 the program and its interface to the importer; `macro-import` brings a module into the macro session only: it is neither linked into the
@@ -1818,6 +1819,12 @@ take` that is not the value of a binding is bound to a fresh name first.
 Erasure is a rewrite of the tree (`lir.own.erase/erase-module`), the last
 pass before LLVM or a printer; the liro cache keys on the text before
 it, with the forms in it.
+
+A module with no `ownership` form has no runtime to erase the forms to, and the verifier refuses one whose functions use the managed type
+(§6.14.6: `the module uses (ptr 1) but has no ownership form`); but the managed type can be written in what its imports'
+interfaces brought into it, a struct with a managed field, a declaration, a global (§4.7: a program joins its modules under one form,
+and a macro session lowers each of its modules on its own, §4.6). The types of those are erased as above, to `ptr`, and the rest of the
+module is left as it is (`cases/lir/macros/macro-import-ownership-bare.lir`).
 
 ## 7. Calls, variadic functions and tail calls
 
