@@ -1,0 +1,38 @@
+;; expect: accept
+;; out: 1 2 3 107 42
+;; spec/lir.md 4.6: a macro body sees the macro-imported module's structs, external defines and globals and the earlier macros' functions,
+;; whichever of them it names, though its module is compiled with the declarations it names alone (native.macros.declares): `one` names
+;; prune.one and not prune.two, which `two` then takes by address; `pairsum` calls prune.pair-of without naming the struct it returns;
+;; `three` reads the global; `nested` names prune.outer and reaches the field of prune.inner it holds by value. Each wraps its value with
+;; the earlier macro's function lir.macro.box. prune-old.lir is the same in the old spelling.
+(DECLARE printf I32 (PTR ...))
+(MACRO-IMPORT "prune-base.lir")
+(DEFINE-MACRO box (v)
+  (BLOCK entry
+    (LET ((l (CALL (GLOBAL lir.sexp.list) (I64 0))))
+      (CALL (GLOBAL lir.sexp.push) l (CALL (GLOBAL lir.sexp.symbol) (STRING "I64")))
+      (CALL (GLOBAL lir.sexp.push) l v)
+      (RET l))))
+(DEFINE-MACRO one ()
+  (BLOCK entry (RET (CALL (GLOBAL lir.macro.box) (CALL (GLOBAL lir.sexp.integer) (CALL (GLOBAL prune.one)))))))
+(DEFINE-MACRO two ()
+  (BLOCK entry
+    (LET ((n (INDIRECT-CALL (GLOBAL prune.two) (FUNCTION I64 ()))))
+      (RET (CALL (GLOBAL lir.macro.box) (CALL (GLOBAL lir.sexp.integer) n))))))
+(DEFINE-MACRO pairsum ()
+  (BLOCK entry
+    (LET ((p (CALL (GLOBAL prune.pair-of) (I64 1) (I64 2))))
+      (RET (CALL (GLOBAL lir.macro.box) (CALL (GLOBAL lir.sexp.integer) (ADD (EXTRACTVALUE p 0) (EXTRACTVALUE p 1))))))))
+(DEFINE-MACRO three ()
+  (BLOCK entry
+    (LET ((n (ADD (LOAD I64 (GLOBAL prune.base)) (CALL (GLOBAL prune.add) (I64 3) (I64 4)))))
+      (RET (CALL (GLOBAL lir.macro.box) (CALL (GLOBAL lir.sexp.integer) n))))))
+(DEFINE-MACRO nested ()
+  (BLOCK entry
+    (LET ((o (ALLOCA (STRUCT prune.outer))) (f (GETELEMENTPTR (STRUCT prune.outer) o (I32 0) (I32 1) (I32 1))))
+      (STORE (I64 42) f)
+      (RET (CALL (GLOBAL lir.macro.box) (CALL (GLOBAL lir.sexp.integer) (LOAD I64 f)))))))
+(DEFINE (main I32) ()
+  (BLOCK entry
+    (CALL (GLOBAL printf) (STRING "%lld %lld %lld %lld %lld\n") (one) (two) (pairsum) (three) (nested))
+    (RET (I32 0))))

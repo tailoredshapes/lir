@@ -14,6 +14,7 @@ compiler/tests/native/j-smoke.fib
 compiler/tests/native/f-unit.fib
 compiler/tests/native/a-unit.fib
 compiler/tests/native/k2/k2-rules.fib
+compiler/tests/native/unit-macro-declares.fib
 # Not run: compiler/tests/native/l2-lower.fib fails (`misc: DIFF line 6`: its golden l2/misc.ll has `@.str = private unnamed_addr
 # constant`, lair now prints `private constant`). It was in no gate of fibber's either; the golden or the lowering is to be decided, not
 # changed quietly (CLAUDE.md). compiler/tests/native/skeleton.fib: see mk/checks.mk. compiler/tests/native/h-cases.fib is a harness

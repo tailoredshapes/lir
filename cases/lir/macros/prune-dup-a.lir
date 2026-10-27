@@ -1,0 +1,6 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6: a runtime module that reject-prune-duplicate.lir macro-imports beside prune-dup-b.lir, which defines a struct of the same
+;; name; run alone it is no program.
+(DEFSTRUCT prune.dup (I64))
+(DEFINE (prune.dup-a I64) () (BLOCK entry (RET (I64 1))))

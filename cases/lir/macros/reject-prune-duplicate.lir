@@ -1,0 +1,10 @@
+;; expect: reject
+;; error: 6:1: error: macro m: duplicate struct %struct.prune.dup
+;; spec/lir.md 4.6: the interfaces of the modules macro-imported into a session are declared in every later macro's body, and the body is
+;; checked as a module of them: two that define one struct are the macro's error whether or not its body names the struct (the error is the
+;; checker's, at the second definition, line 6 of prune-dup-b.lir). Compiling a macro with only the declarations it names must not hide it.
+(DECLARE printf I32 (PTR ...))
+(MACRO-IMPORT "prune-dup-a.lir")
+(MACRO-IMPORT "prune-dup-b.lir")
+(DEFINE-MACRO m () (BLOCK entry (RET (CALL (GLOBAL lir.sexp.integer) (CALL (GLOBAL prune.dup-a))))))
+(DEFINE (main I32) () (BLOCK entry (RET (I32 0))))

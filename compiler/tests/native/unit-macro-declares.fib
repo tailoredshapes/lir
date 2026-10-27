@@ -1,0 +1,108 @@
+;; compiler/tests/native/unit-macro-declares.fib: what a macro's module declares (native.macros.declares, spec/lir.md 4.6). The session's
+;; declarations are kept as a `Prune` as they grow: clean while they are a valid module (no name or struct twice, no reserved name, no struct
+;; that holds itself, no owned kind outside a parameter), with the structs they name and none defines `missing`; and a body that names some
+;; of them gets those and every struct they name, through their types and the structs' fields. The cases cases/lir/macros/prune*.lir and
+;; reject-prune-duplicate.lir are the same rules end to end; compiler/tests/native/macro-prune-faults.sh plants faults that they catch.
+;; Build: fibc build compiler/tests/native/unit-macro-declares.fib -I compiler -I compiler/tests/native -I compiler/tests/support -o OUT
+(ns tests.native.unit-macro-declares (:use fib.test.unit lir.diag lir.sexp lir.types lir.ast native.macros.types)
+  (:require [fib.test.run :as test-runner] [lir.parse :as parse] [native.macros.declares :as decl]))
+
+(defun items-of (src: str) -> (Vec LItem)
+  (match (parse/parse-source src) ((Ok m) (. m items)) ((Err d) (do (println (str "FAIL parse: " (diag-str d))) []))))
+
+(defun item-name (it: LItem) -> str
+  (match it
+    ((ItDeclare d) (. d name))
+    ((ItDeclareGlobal g) (. g name))
+    ((ItStruct s) (str "%" (. s name)))
+    (_ "?")))
+
+(def iface-src: str "(DEFSTRUCT a.in (I64 I64))
+(DEFSTRUCT a.out (I64 (STRUCT a.in)))
+(DEFSTRUCT a.pair (I64 I64))
+(DEFSTRUCT a.unused (I64))
+(DECLARE a.f I64 ())
+(DECLARE a.mk (STRUCT a.pair) (I64))
+(DECLARE-GLOBAL a.g I64)
+(DECLARE a.u I64 (PTR))
+(DECLARE a.takes I64 ((ARRAY 2 (STRUCT a.out))))")
+
+(defstruct Fixture (lib: (Vec LItem) iface: (Vec LItem) p: Prune))
+
+(defun fixture () -> Fixture
+  (let ((lib (match (decl/library-declares) ((Ok v) v) ((Err d) (do (println (str "FAIL library: " (diag-str d))) []))))
+        (iface (items-of iface-src)))
+    (Fixture lib iface (decl/prune-add (decl/prune-new lib) (count lib) iface))))
+
+;; The names of the declarations kept for a body that names `ns`, in order (a struct as %NAME).
+(defun kept (f: Fixture ns: (Vec str)) -> str
+  (str-join-with " " (mapv (fn (i: i64) (item-name (decl/item-at (. f lib) (. f iface) i)))
+                           (decl/selected (. f p) (. f lib) (. f iface) (into #{} ns)))))
+
+;; `clean` and the missing structs, sorted, after `src` is added to the fixture's session as one more interface.
+(defun after (f: Fixture src: str) -> str
+  (let ((q (decl/prune-add (. f p) (+ (count (. f lib)) (count (. f iface))) (items-of src))))
+    (str (if (. q clean) "clean" "unclean") " missing=" (str-join-with "," (vec (sort (vec (. q missing))))))))
+
+(defun mentioned (src: str) -> str
+  (match (read src)
+    ((Ok forms) (str-join-with " " (vec (sort (vec (decl/mentions (nth forms 0)))))))
+    ((Err d) (str "read: " (diag-str d)))))
+
+(defun selection-steps () -> (Vec StepRun)
+  (let ((cs (new-rec)) (f (fixture)))
+    (do
+      (is cs (and (. (. f p) clean) (empty? (. (. f p) missing))) "the library's declarations and an interface are clean, nothing missing")
+      (is cs (= (kept f ["a.f"]) "a.f") "a function named is declared, and nothing else")
+      (is cs (= (kept f ["a.mk"]) "%a.pair a.mk") "a function's struct result comes with it")
+      (is cs (= (kept f ["a.out"]) "%a.in %a.out") "a struct comes with the struct it holds by value")
+      (is cs (= (kept f ["a.takes"]) "%a.in %a.out a.takes") "a parameter's array of structs brings them, and what they hold")
+      (is cs (= (kept f ["a.g" "x" "%struct.a.unused"]) "a.g") "a global named is declared; a name nothing declares is nothing")
+      (is cs (= (kept f ["lir.sexp.tag" "a.u"]) "lir.sexp.tag a.u") "the library's and an interface's, in the module's order")
+      (is cs (= (kept f []) "") "a body that names nothing declares nothing")
+      (rec-steps cs))))
+
+(defun clean-steps () -> (Vec StepRun)
+  (let ((cs (new-rec)) (f (fixture)))
+    (do
+      (is cs (= (after f "(DECLARE b.h I64 ())") "clean missing=") "a new name keeps the session clean")
+      (is cs (= (after f "(DECLARE a.f I64 ())") "unclean missing=") "a function declared again: unclean")
+      (is cs (= (after f "(DECLARE-GLOBAL lir.sexp.tag I64)") "unclean missing=") "a global of a library function's name: unclean")
+      (is cs (= (after f "(DEFSTRUCT a.in (I64))") "unclean missing=") "a struct defined again: unclean")
+      (is cs (= (after f "(DECLARE llvm.foo I64 ())") "unclean missing=") "a reserved name: unclean")
+      (is cs (= (after f "(DEFSTRUCT c.self (I64 (STRUCT c.self)))") "unclean missing=") "a struct that holds itself: unclean")
+      (is cs (= (after f "(DEFSTRUCT c.x (I64 (STRUCT c.y)))\n(DEFSTRUCT c.y ((ARRAY 1 (STRUCT c.x))))") "unclean missing=")
+          "two structs that hold each other: unclean")
+      (is cs (= (after f "(DECLARE o.g (OWNED (PTR (ADDRSPACE 1))) ())") "unclean missing=") "an owned result: unclean")
+      (is cs (= (after f "(DECLARE o.f I64 ((OWNED (PTR (ADDRSPACE 1)))))") "clean missing=") "an owned parameter is a parameter's kind: clean")
+      (is cs (= (after f "(DECLARE m.f (STRUCT m.s) ((STRUCT m.t)))") "clean missing=m.s,m.t") "structs named and not defined are missing")
+      (is cs (decl/prunable? (. f p)) "a clean session with nothing missing is pruned")
+      (is cs (not (decl/prunable? (decl/prune-add (. f p) 1000 (items-of "(DECLARE m.f (STRUCT m.s) ())"))))
+          "a session that names a struct it does not define is not pruned: the checker's error is the full module's")
+      (is cs (not (decl/prunable? (decl/prune-add (. f p) 1000 (items-of "(DECLARE a.f I64 ())")))) "an unclean session is not pruned")
+      (is cs (= (after f "(DECLARE m.f (STRUCT m.s) ())\n(DEFSTRUCT m.s (I64))") "clean missing=") "a struct defined after its use is not missing")
+      (let ((q (decl/prune-macro (. f p) "m1")))
+        (do (is cs (and (. q clean) (= (get (. q symbols) "lir.macro.m1") (some -1))) "an earlier macro's function is a name of the session")
+            (is cs (not (. (decl/prune-add q 1000 (items-of "(DECLARE lir.macro.m1 PTR ())")) clean)) "an interface that declares it: unclean")
+            (is cs (not (. (decl/prune-macro q "m1") clean)) "a macro's function declared twice: unclean")))
+      (rec-steps cs))))
+
+(defun mention-steps () -> (Vec StepRun)
+  (let ((cs (new-rec)))
+    (do
+      (is cs (= (mentioned "(CALL (GLOBAL a.f) (GETELEMENTPTR (STRUCT a.out) p))") "CALL GETELEMENTPTR GLOBAL STRUCT a.f a.out p")
+          "a body's atoms are its names")
+      (is cs (= (mentioned "(call @a.f (getelementptr %struct.a.out p) [2 x %struct.a.in])")
+                "%struct.a.in %struct.a.out 2 @a.f a.f a.in a.out call getelementptr p x")
+          "the old spelling's @f and %struct.s name f and s")
+      (rec-steps cs))))
+
+(defun tests () -> Suite
+  (unit-suite "native/unit-macro-declares"
+    [(test-case "selection" selection-steps "compiler/tests/native/unit-macro-declares.fib")
+     (test-case "clean" clean-steps "compiler/tests/native/unit-macro-declares.fib")
+     (test-case "mentions" mention-steps "compiler/tests/native/unit-macro-declares.fib")]))
+
+(defun main () -> i64
+  (test-runner/run-main-with [(tests)]
+    (into ["--isolate" "fork" "--timeout" "300"] (vec (args)))))

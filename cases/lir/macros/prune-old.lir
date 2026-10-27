@@ -1,0 +1,35 @@
+;; expect: accept
+;; out: 1 2 3 107 42
+;; spec/lir.md 4.6 and 2: prune.lir in the old spelling, which names a function `@f` and a struct `%struct.s` with an atom: a macro's module
+;; declares what those atoms name (native.macros.declares).
+(declare printf i32 (ptr ...))
+(macro-import "prune-base.lir")
+(define-macro box (v)
+  (block entry
+    (let ((l (call @lir.sexp.list (i64 0))))
+      (call @lir.sexp.push l (call @lir.sexp.symbol (string "i64")))
+      (call @lir.sexp.push l v)
+      (ret l))))
+(define-macro one ()
+  (block entry (ret (call @lir.macro.box (call @lir.sexp.integer (call @prune.one))))))
+(define-macro two ()
+  (block entry
+    (let ((n (indirect-call @prune.two (fn i64 ()))))
+      (ret (call @lir.macro.box (call @lir.sexp.integer n))))))
+(define-macro pairsum ()
+  (block entry
+    (let ((p (call @prune.pair-of (i64 1) (i64 2))))
+      (ret (call @lir.macro.box (call @lir.sexp.integer (add (extractvalue p 0) (extractvalue p 1))))))))
+(define-macro three ()
+  (block entry
+    (let ((n (add (load i64 @prune.base) (call @prune.add (i64 3) (i64 4)))))
+      (ret (call @lir.macro.box (call @lir.sexp.integer n))))))
+(define-macro nested ()
+  (block entry
+    (let ((o (alloca %struct.prune.outer)) (f (getelementptr %struct.prune.outer o (i32 0) (i32 1) (i32 1))))
+      (store (i64 42) f)
+      (ret (call @lir.macro.box (call @lir.sexp.integer (load i64 f)))))))
+(define (main i32) ()
+  (block entry
+    (call @printf (string "%lld %lld %lld %lld %lld\n") (one) (two) (pairsum) (three) (nested))
+    (ret (i32 0))))

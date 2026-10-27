@@ -219,7 +219,7 @@
             (mb (readers/mailbox-of rs))
             (_ (call/call-i64 set-hook [(. (call/hook-addresses) one) (. mb handle)]))
             (decls (match (decl/library-declares) ((Err d) (Err (diag-str d))) ((Ok v) (Ok v)))))
-    (Ok (Session j take at set-hook rs (cell nil) (cell (map-empty)) (cell (set-empty)) (cell []) decls))))
+    (Ok (Session j take at set-hook rs (cell nil) (cell (map-empty)) (cell (set-empty)) (cell []) decls (cell (decl/prune-new decls))))))
 
 (defun session-of :private (env: Env) -> (Result Session str)
   (match @(. env session)
@@ -239,7 +239,7 @@
 (defun macro-module-items :private (env: Env s: Session def: Sexp) -> (Result LModule Diagnostic)
   (match (items/parse-item (sexp-plain def))
     ((Err d) (Err d))
-    ((Ok it) (Ok (LModule (conj (into (into (. s decls) (decl/macro-declare-items env s)) @(. s iface)) it))))))
+    ((Ok it) (Ok (LModule (conj (decl/module-declares env s def) it))))))
 
 ;; `(define-macro NAME (PARAM..) BLOCK..)`: the blocks are expanded with the macros so far, then compiled.
 (defun define-macro :private (env: Env form: Sexp) -> (Option Diagnostic)
@@ -260,6 +260,7 @@
   (try-let ((s (match (session-of env) ((Err e) (err pos (str "macro " name ": " e))) ((Ok s) (Ok s))))
             (entry (compile-entry env s (str "macro " name) (str "lir.macro." name) ps blocks pos)))
     (do (set! (. env macros) (assoc @(. env macros) name (Macro name entry (- (count (. ps names)) (if (. ps rest) 1 0)) (. ps rest) (. env file) (. s take) (. s at) s)))
+        (set! (. s prune) (decl/prune-macro @(. s prune) name))
         (Ok ()))))
 
 ;; The function `fname` of parameters `ps` and body `blocks` compiled into the session `s`: its address. Errors carry `what` (`macro NAME`,
@@ -405,6 +406,7 @@
   (match (jit/session-add-module (. s jit) (str "macro-import." path) m)
     ((Err e) (Err (module-error (str "macro-import " path) e pos)))
     ((Ok _) (do (set! (. s imported) (assoc @(. s imported) key iface))
+                (set! (. s prune) (decl/prune-add @(. s prune) (+ (count (. s decls)) (count @(. s iface))) iface))
                 (set! (. s iface) (into @(. s iface) iface))
                 (Ok iface)))))
 

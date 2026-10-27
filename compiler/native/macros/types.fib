@@ -2,7 +2,7 @@
 ;; expansion environment, a macro's parameters, and the limits and the list of lIR's directions. Here, under native.macros, so that the helpers
 ;; (native.macros.helpers) and the expander share them (ADR 0006: files under 500 lines).
 (ns native.macros.types
-  (:use lir.diag lir.sexp lir.ast)
+  (:use lir.diag lir.sexp lir.ast lir.types)
   (:require [native.jit :as jit] [native.call :as call] [native.macros.readers :as readers]))
 
 ;; A defined macro: its entry, a ccc function of `fixed` ptr parameters and one more for the rest when `rest`; the file it was defined in
@@ -21,7 +21,16 @@
 ;; `iface`: every interface, declared in the macro bodies compiled after; `decls`: the library's and the stream's declarations, parsed once
 ;; (native.macros.declares).
 (defstruct Session (jit: jit/JitSession take: i64 at: i64 set-hook: i64 readers: readers/Readers pending: (Cell (Option Diagnostic))
-                    imported: (Cell (Map str (Vec LItem))) importing: (Cell (Set str)) iface: (Cell (Vec LItem)) decls: (Vec LItem)))
+                    imported: (Cell (Map str (Vec LItem))) importing: (Cell (Set str)) iface: (Cell (Vec LItem)) decls: (Vec LItem)
+                    prune: (Cell Prune)))
+
+;; What a session knows of its declarations (`decls`, then `iface`) to give a macro's module only those its body names
+;; (native.macros.declares): `symbols` and `structs` by name, each to its place in `decls` then `iface` (an earlier macro's function: -1 - K,
+;; K its place among the session's `macros`, counted),
+;; `fields` of each struct, `missing` the structs a declaration or a struct names and none defines, and `clean` while no two declarations
+;; share a name and none is a name the checker refuses or a type it refuses (a struct that holds itself, an owned kind outside a parameter).
+;; While `clean` and nothing is `missing` the declarations are a valid module, and so is any part of them closed over the structs it names.
+(defstruct Prune (symbols: (Map str i64) structs: (Map str i64) fields: (Map str (Vec LType)) missing: (Set str) clean: bool macros: i64))
 
 ;; What `(import "FILE")` does (spec/lir.md 4.7), given the importing module's environment, the file as written and the form's position:
 ;; native.imports loads the module and defines its macros in the environment; the interface items are the loader's to keep. The macros

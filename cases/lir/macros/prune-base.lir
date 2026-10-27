@@ -1,0 +1,17 @@
+;; expect: reject
+;; error: 1:1: error: no main function
+;; spec/lir.md 4.6: the runtime module that prune.lir and prune-old.lir macro-import, with more in its interface than any one of their macros
+;; names: functions, a global, a struct held by value in another, a struct a function returns by value, and what no macro names; run alone
+;; it is no program.
+(DEFSTRUCT prune.inner (I64 I64))
+(DEFSTRUCT prune.outer (I64 (STRUCT prune.inner)))
+(DEFSTRUCT prune.pair (I64 I64))
+(DEFSTRUCT prune.unused (I64 I64 I64))
+(GLOBAL prune.base I64 (I64 100))
+(DEFINE (prune.one I64) () (BLOCK entry (RET (I64 1))))
+(DEFINE (prune.two I64) () (BLOCK entry (RET (I64 2))))
+(DEFINE (prune.add I64) ((I64 a) (I64 b)) (BLOCK entry (RET (ADD a b))))
+(DEFINE (prune.pair-of (STRUCT prune.pair)) ((I64 a) (I64 b))
+  (BLOCK entry (RET (INSERTVALUE (INSERTVALUE (ZEROINITIALIZER (STRUCT prune.pair)) a 0) b 1))))
+(DEFINE (prune.unused-third I64) ((PTR p))
+  (BLOCK entry (RET (LOAD I64 (GETELEMENTPTR (STRUCT prune.unused) p (I32 0) (I32 2))))))
